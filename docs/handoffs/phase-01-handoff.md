@@ -3,7 +3,7 @@
 ## Status
 
 - **Phase:** 01 — Workstation and Repository Foundation
-- **Status:** In progress — awaiting reviewed Git checkpoint
+- **Status:** Complete
 - **Date:** 2026-08-19
 - **Next phase:** 02 — Databricks and SQL Connectivity
 
@@ -81,6 +81,7 @@ their own evidence.
 | Keep real secrets outside Git and safe examples | Git history and sharing can retain exposed credentials | Relying only on repository visibility or later deletion is unsafe |
 | Use an account-linked GitHub `noreply` commit address | Retains portfolio attribution without publishing a personal email | A real email is valid but becomes durable public commit metadata |
 | Publish project progress to GitHub from Phase 01 | Provides visible history and an off-machine copy of reviewed commits | Waiting until Phase 11 would hide the learning and development history |
+| Keep the remote private during the foundation-only stage | A later public launch will present substantive, reviewed analytics work rather than only setup files | The repository can be made public after a suitable milestone and another secret review |
 
 ## Concepts the learner can explain
 
@@ -120,17 +121,18 @@ their own evidence.
 
 ## Open questions or blockers
 
-- Select public or private visibility for the initial GitHub repository.
-- Review and create the first intentional commit; no assistant-created commit is
-  authorized.
-- Publish `main`, record the remote and commit hash, and confirm a clean working tree.
-- Phase 02 must not start until these Phase 01 Git checkpoint items are complete.
+- None. Commit and push the documentation-only completion record containing this
+  handoff, then verify a clean working tree before starting Phase 02.
 
 ## Git checkpoint
 
 - **Branch:** `main`
-- **Commit:** Not committed
-- **Working tree:** Initial scaffold and Phase 01 documentation are untracked pending review
+- **Foundation commit:** `bb80972` — `chore: establish Phase 01 project foundation`
+- **Remote:** `origin` — `https://github.com/D3v1n04/Market-Risk-Analysis.git`
+- **Visibility:** private by learner decision; reconsider after a substantive reviewed milestone
+- **Publication:** local `main` and `origin/main` both pointed to `bb80972`
+- **Completion record:** the documentation-only commit containing this handoff update
+- **Working tree:** clean after publishing `bb80972`; verify clean again after pushing the completion record
 - **Ignored/generated artifacts checked:** yes; `.venv`, `.cache`, `.env`, generated data, and Python caches are excluded
 
 ## Files and platform objects changed
@@ -155,8 +157,8 @@ their own evidence.
 
 - Local development, quality checks, Docker access, secret hygiene, and conceptual
   prerequisites are satisfied.
-- Complete the Git checkpoint and clean-status evidence before declaring Phase 01
-  complete or changing any Phase 02 code or platform objects.
+- The reviewed foundation commit is published. Commit and push this completion record,
+  verify a clean status, and only then open the separate Phase 02 chat.
 
 ## Suggested next-chat opening
 

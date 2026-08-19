@@ -3,15 +3,16 @@
 ## Current position
 
 - **Current phase:** Phase 01 — Workstation and Repository Foundation
-- **Status:** In progress
-- **Next gate:** Review and create the first Git commit, publish it to the chosen
-  GitHub remote, then record a clean working tree
+- **Status:** Complete
+- **Next gate:** Start Phase 02 in a separate chat only after the documentation-only
+  completion record is committed, pushed, and followed by a clean status check
 - **Last updated:** 2026-08-19
 
 The learner's Windows/Ubuntu workstation, repository scaffold, local quality gate,
-Docker integration, intentional failing-test exercise, and explain-back gate have
-been validated. Phase 01 remains open only for the reviewed Git checkpoint, GitHub
-publication, and final clean-working-tree evidence.
+Docker integration, intentional failing-test exercise, explain-back gate, reviewed
+Git checkpoint, and GitHub publication have been validated. This completion record
+must be committed and pushed before opening the separate Phase 02 chat. No Phase 02
+work has begun.
 
 ## Status definitions
 
@@ -28,7 +29,7 @@ publication, and final clean-working-tree evidence.
 
 | Phase | Title | Status | Git checkpoint |
 | --- | --- | --- | --- |
-| 01 | Workstation and Repository Foundation | In progress | Awaiting first commit |
+| 01 | Workstation and Repository Foundation | Complete | `bb80972` — foundation |
 | 02 | Databricks and SQL Connectivity | Not started | — |
 | 03 | Risk Requirements and Data Contracts | Not started | — |
 | 04 | Bronze Ingestion | Not started | — |
@@ -61,13 +62,13 @@ publication, and final clean-working-tree evidence.
 | Synthetic deterministic data comes first | Reproducible, safe, and free from licensing ambiguity |
 | Gold data feeds Power BI | Shared business logic should be governed and tested upstream |
 | GitHub will track project progress from Phase 01 | Supports a visible portfolio history and off-machine copy of reviewed commits |
+| Keep the GitHub repository private during the foundation-only stage | Publish the portfolio after it contains a substantive, reviewed analytics milestone rather than an initial scaffold alone |
 | Use GitHub's account-linked `noreply` address for this repository | Preserves commit attribution without publishing the learner's personal email |
 
 ## Open confirmations for Phase 01
 
-- Choose public or private visibility for the initial GitHub repository.
-- Review the staged files, create the first intentional commit, publish `main`, and
-  record the remote URL, commit hash, and clean working-tree evidence.
+- None. Commit and push this documentation-only completion record, then verify the
+  working tree is clean before starting the separate Phase 02 chat.
 
 ## Evidence log
 
@@ -89,6 +90,7 @@ Add evidence here only after it is produced on the learner's environment.
 | 2026-08-19 | 01 | Ignore and secret-hygiene rules | Pass | `.venv`, `.cache`, `.env`, and generated data are ignored; `.env.example` and `data/README.md` are explicitly trackable |
 | 2026-08-19 | 01 | Explain-back knowledge check | Pass | Learner explained Git state, lockfile versus environment, repository structure, secrets, tests versus linting, and the limits of `make check` |
 | 2026-08-19 | 01 | Git author privacy | Pass | Repository-local author name and account-linked GitHub `noreply` email configured; no address recorded here |
+| 2026-08-19 | 01 | First Git checkpoint and GitHub publication | Pass | `bb80972` (`chore: establish Phase 01 project foundation`) is on local `main` and `origin/main`; `origin` is `https://github.com/D3v1n04/Market-Risk-Analysis.git`; repository remains private by learner decision; the working tree was clean before this completion-record update |
 
 ## Handoffs
 
