@@ -1,0 +1,29 @@
+# Python environments and caches
+.venv/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Local lakehouse data (never commit generated or sensitive datasets)
+data/**
+!data/README.md
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+
+# Test and coverage output
+.coverage
+htmlcov/
+coverage.xml
