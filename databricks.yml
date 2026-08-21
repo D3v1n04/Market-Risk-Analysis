@@ -1,0 +1,19 @@
+# This is a Declarative Automation Bundle definition for Market-Risk-Analysis.
+# The Databricks extension requires databricks.yml configuration file.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: Market-Risk-Analysis
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-e87c98ff-1b61.cloud.databricks.com
+
+  ## Optionally, there could be 'staging' or 'prod' targets here.
+  #
+  # prod:
+  #   workspace:
+  #     host: https://dbc-e87c98ff-1b61.cloud.databricks.com

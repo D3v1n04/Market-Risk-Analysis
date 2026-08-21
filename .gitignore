@@ -27,3 +27,5 @@ data/**
 .coverage
 htmlcov/
 coverage.xml
+
+.databricks
