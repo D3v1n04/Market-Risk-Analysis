@@ -12,9 +12,11 @@ from market_risk_analysis.config import Settings
 MINIMUM_PYTHON = (3, 12)
 REQUIRED_PROJECT_PATHS = (
     Path("pyproject.toml"),
+    Path("databricks.yml"),
     Path("src/market_risk_analysis"),
     Path("tests"),
     Path("data/README.md"),
+    Path("sql/connectivity/phase_02_connectivity_check.sql"),
 )
 
 
