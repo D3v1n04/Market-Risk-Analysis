@@ -17,6 +17,7 @@ REQUIRED_PROJECT_PATHS = (
     Path("tests"),
     Path("data/README.md"),
     Path("sql/connectivity/phase_02_connectivity_check.sql"),
+    Path("sql/setup/phase_02_create_dev_schema.sql"),
 )
 
 
