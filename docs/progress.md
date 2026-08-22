@@ -2,17 +2,17 @@
 
 ## Current position
 
-- **Current phase:** Phase 01 — Workstation and Repository Foundation
-- **Status:** Complete
-- **Next gate:** Start Phase 02 in a separate chat only after the documentation-only
-  completion record is committed, pushed, and followed by a clean status check
-- **Last updated:** 2026-08-19
+- **Current phase:** Phase 02 — Databricks and SQL Connectivity
+- **Status:** In progress — awaiting final documentation and Git checkpoint
+- **Next gate:** Review and publish the Phase 02 documentation, then record the
+  completion checkpoint and verify a clean synchronized branch
+- **Last updated:** 2026-08-21
 
-The learner's Windows/Ubuntu workstation, repository scaffold, local quality gate,
-Docker integration, intentional failing-test exercise, explain-back gate, reviewed
-Git checkpoint, and GitHub publication have been validated. This completion record
-must be committed and pushed before opening the separate Phase 02 chat. No Phase 02
-work has begun.
+Secure OAuth connectivity from Ubuntu, VS Code, and DBeaver has been validated
+against Databricks Free Edition. Identity and catalog checks succeeded independently,
+the learner-owned `workspace.devin_market_risk_dev` schema was intentionally retained
+with zero tables, the SQL warehouse was stopped, and no Phase 03 data-contract or
+ingestion work has begun.
 
 ## Status definitions
 
@@ -30,7 +30,7 @@ work has begun.
 | Phase | Title | Status | Git checkpoint |
 | --- | --- | --- | --- |
 | 01 | Workstation and Repository Foundation | Complete | `bb80972` — foundation |
-| 02 | Databricks and SQL Connectivity | Not started | — |
+| 02 | Databricks and SQL Connectivity | In progress | `21f64ef`, `29fb249`, `632a079` |
 | 03 | Risk Requirements and Data Contracts | Not started | — |
 | 04 | Bronze Ingestion | Not started | — |
 | 05 | Silver Quality and Canonical Data | Not started | — |
@@ -64,11 +64,20 @@ work has begun.
 | GitHub will track project progress from Phase 01 | Supports a visible portfolio history and off-machine copy of reviewed commits |
 | Keep the GitHub repository private during the foundation-only stage | Publish the portfolio after it contains a substantive, reviewed analytics milestone rather than an initial scaffold alone |
 | Use GitHub's account-linked `noreply` address for this repository | Preserves commit attribution without publishing the learner's personal email |
+| Prefer OAuth U2M for user authentication | Uses browser authorization and short-lived credentials without manually handling a PAT |
+| Keep Databricks authentication outside Git | CLI and DBeaver authentication state is local and machine-specific |
+| Use Databricks OSS JDBC driver 3.4.2 | Supported JDBC 3.x path provides OAuth and Unity Catalog connectivity |
+| Disable DBeaver OAuth token caching | Minimizes persistent credential material on the Windows host |
+| Keep important SQL and DDL in Git | Enables review, reuse, validation, and reproducibility across SQL clients |
+| Use `workspace.devin_market_risk_dev` | Provides an explicit learner-owned development namespace |
+| Retain the development schema with zero tables | The governed namespace is useful later without starting ingestion |
+| Stop the SQL warehouse when idle | Respects Free Edition compute constraints |
 
-## Open confirmations for Phase 01
+## Open confirmations for Phase 02
 
-- None. Commit and push this documentation-only completion record, then verify the
-  working tree is clean before starting the separate Phase 02 chat.
+- Review and publish the Phase 02 handoff and progress evidence.
+- Record the documentation-only completion checkpoint.
+- Verify a clean synchronized branch before starting Phase 03.
 
 ## Evidence log
 
@@ -91,11 +100,27 @@ Add evidence here only after it is produced on the learner's environment.
 | 2026-08-19 | 01 | Explain-back knowledge check | Pass | Learner explained Git state, lockfile versus environment, repository structure, secrets, tests versus linting, and the limits of `make check` |
 | 2026-08-19 | 01 | Git author privacy | Pass | Repository-local author name and account-linked GitHub `noreply` email configured; no address recorded here |
 | 2026-08-19 | 01 | First Git checkpoint and GitHub publication | Pass | `bb80972` (`chore: establish Phase 01 project foundation`) is on local `main` and `origin/main`; `origin` is `https://github.com/D3v1n04/Market-Risk-Analysis.git`; repository remains private by learner decision; the working tree was clean before this completion-record update |
+| 2026-08-21 | 02 | Databricks Free Edition inventory | Pass | Available catalogs were `samples`, `system`, and `workspace`; `workspace` contained `default` and `information_schema`; the single SQL warehouse was serverless and 2X-Small |
+| 2026-08-21 | 02 | Databricks CLI installation | Pass | Databricks CLI 1.13.0 installed at `/usr/local/bin/databricks` inside Ubuntu |
+| 2026-08-21 | 02 | CLI OAuth authentication | Pass | Profile `market-risk-dev` was valid, current-user lookup matched, and no PAT was created |
+| 2026-08-21 | 02 | Authentication file permissions | Pass | `~/.databrickscfg` and the OAuth token cache were outside the repository with mode `600` |
+| 2026-08-21 | 02 | VS Code Databricks integration | Pass | Verified extension 2.14.0 was enabled in WSL, used the correct OAuth profile, and displayed the expected Unity Catalog objects |
+| 2026-08-21 | 02 | Bundle validation | Pass | `databricks bundle validate --profile market-risk-dev` returned `Validation OK!` without deploying resources |
+| 2026-08-21 | 02 | Version-controlled SQL smoke test | Pass | Identity, `workspace.default`, three catalogs, two schemas, and zero default tables matched expectations |
+| 2026-08-21 | 02 | DBeaver JDBC and OAuth connection | Pass | DBeaver Community 26.1.5 connected through Databricks JDBC 3.4.2 without a PAT |
+| 2026-08-21 | 02 | Independent DBeaver SQL validation | Pass | Identity matched; catalog/schema and metadata queries returned the expected results |
+| 2026-08-21 | 02 | Independent Ubuntu SQL validation | Pass | Statement Execution API returned `SUCCEEDED` with `workspace` and `default` |
+| 2026-08-21 | 02 | Learner-owned development schema | Pass | `workspace.devin_market_risk_dev` was created from Git-backed DDL, ownership/comment were validated, and the schema was deliberately retained with zero tables |
+| 2026-08-21 | 02 | `make check` | Pass | Ruff passed, pytest reported 4 passed, and the environment diagnostic reported 11/11 passed |
+| 2026-08-21 | 02 | Secret and resource hygiene | Pass | Generated `.databricks/` state remained ignored, authentication stayed outside Git, no credential was documented, and the SQL warehouse finished in `STOPPED` state |
 
 ## Handoffs
 
 Completed phase handoffs belong in `docs/handoffs/` and use
 `docs/phase-handoff-template.md`.
+
+- `docs/handoffs/phase-02-handoff.md` — Phase 02 validation, decisions,
+  glossary, knowledge check, and next-phase readiness
 
 ## New-chat kickoff prompt
 
