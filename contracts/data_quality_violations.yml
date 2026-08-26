@@ -1,0 +1,188 @@
+contract_version: 1.0.0
+dataset: data_quality_violations
+dataset_class: operational_audit
+description: Immutable evidence of each warning, quarantine, or rejection raised for a delivered source record.
+grain: One row represents one data-quality rule violation for one delivered source record in one batch.
+
+primary_key:
+  - violation_id
+
+natural_key:
+  - batch_id
+  - source_record_id
+  - rule_id
+
+foreign_keys:
+  - fields: [batch_id]
+    references: ingestion_batches.batch_id
+  - fields: [resolution_batch_id]
+    references: ingestion_batches.batch_id
+    nullable: true
+
+fields:
+  - name: violation_id
+    type: STRING
+    nullable: false
+    description: Deterministic identifier for the batch, source record, and rule combination.
+  - name: batch_id
+    type: STRING
+    nullable: false
+  - name: dataset_name
+    type: STRING
+    nullable: false
+    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS]
+  - name: source_record_id
+    type: STRING
+    nullable: false
+    description: Delivered record that triggered the rule.
+  - name: rule_id
+    type: STRING
+    nullable: false
+    description: Stable machine-readable rule identifier from the applicable contract.
+  - name: severity
+    type: STRING
+    nullable: false
+    allowed_values: [LOW, MEDIUM, HIGH, CRITICAL]
+  - name: disposition
+    type: STRING
+    nullable: false
+    allowed_values: [WARN, QUARANTINE, REJECT]
+  - name: affected_field
+    type: STRING
+    nullable: true
+    description: Specific field, or null for record-level and cross-record rules.
+  - name: observed_value
+    type: STRING
+    nullable: true
+    description: Sanitized observed representation; null when unsafe or unavailable.
+  - name: expected_condition
+    type: STRING
+    nullable: false
+  - name: message
+    type: STRING
+    nullable: false
+    description: Plain-language reason and analytical impact.
+  - name: detected_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: resolution_status
+    type: STRING
+    nullable: false
+    allowed_values: [OPEN, RESOLVED]
+  - name: resolution_action
+    type: STRING
+    nullable: true
+    allowed_values: [ACCEPT_AFTER_FIX, REJECT_CONFIRMED, SUPERSEDED]
+  - name: resolution_batch_id
+    type: STRING
+    nullable: true
+  - name: resolved_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: resolution_note
+    type: STRING
+    nullable: true
+    description: Sanitized explanation of the reviewed resolution.
+  - name: contract_version
+    type: STRING
+    nullable: false
+
+violation_id_derivation:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  fields: [batch_id, source_record_id, rule_id]
+  output: Lowercase 64-character hexadecimal digest.
+
+resolution_semantics:
+  OPEN:
+    must_be_null: [resolution_action, resolution_batch_id, resolved_at_utc, resolution_note]
+  RESOLVED:
+    required: [resolution_action, resolution_batch_id, resolved_at_utc, resolution_note]
+    timestamp_rule: resolved_at_utc is not earlier than detected_at_utc.
+  rejection:
+    original_record_terminal: true
+    allowed_resolution_action: REJECT_CONFIRMED
+  quarantine:
+    original_evidence_immutable: true
+    resolution_process: Fix reference or configuration context, then reprocess the immutable source record in a new linked batch.
+  warning:
+    source_record_may_remain_accepted: true
+
+counting_policy:
+  violation_rows_do_not_equal_source_rows: true
+  explanation: One source record can trigger several rule violations while remaining one received batch record.
+  batch_warning_count: Count warning violation rows according to the stable warning rules.
+  batch_row_outcome: Determined once per source record using the highest required disposition.
+
+immutability_policy:
+  original_violation_fields_immutable: true
+  resolution_fields_append_only: true
+  prohibit_delete_to_hide_failure: true
+  prohibit_manual_silver_bypass: true
+
+quality_rules:
+  - rule_id: VIOLATION_ID_VALID
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: violation_id matches the deterministic SHA-256 derivation.
+  - rule_id: VIOLATION_NATURAL_KEY_UNIQUE
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: batch_id, source_record_id, and rule_id are unique together.
+  - rule_id: VIOLATION_BATCH_REFERENCE_VALID
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: batch_id resolves to the batch that evaluated the source record.
+  - rule_id: VIOLATION_RULE_ID_KNOWN
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: rule_id exists in the stated dataset contract version.
+  - rule_id: VIOLATION_DISPOSITION_ALLOWED
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: disposition is WARN, QUARANTINE, or REJECT.
+  - rule_id: VIOLATION_REQUIRED_TEXT
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: expected_condition and message are nonempty and explain the impact.
+  - rule_id: VIOLATION_OPEN_FIELDS_NULL
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: OPEN violations have null resolution fields.
+  - rule_id: VIOLATION_RESOLVED_FIELDS_COMPLETE
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: RESOLVED violations have all resolution fields populated.
+  - rule_id: VIOLATION_RESOLUTION_TIMESTAMP_VALID
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: resolved_at_utc is not earlier than detected_at_utc.
+  - rule_id: VIOLATION_RESOLUTION_BATCH_VALID
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: resolution_batch_id resolves to a later linked batch when the violation is resolved.
+  - rule_id: VIOLATION_REJECTION_TERMINAL
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: A rejected original record is never changed into an accepted record in place.
+  - rule_id: VIOLATION_QUARANTINE_REPROCESS_REQUIRED
+    severity: ERROR
+    disposition: FAIL_AUDIT_RECORD
+    assertion: Quarantine resolution uses corrected context and a new batch rather than a manual Silver edit.
+  - rule_id: VIOLATION_SECRET_SAFE
+    severity: CRITICAL
+    disposition: FAIL_AUDIT_RECORD
+    assertion: observed_value, message, and resolution_note contain no credentials, tokens, secrets, or secret-bearing URLs.
+  - rule_id: VIOLATION_IMMUTABLE_EVIDENCE
+    severity: CRITICAL
+    disposition: FAIL_AUDIT_RECORD
+    assertion: Detection evidence is immutable and cannot be deleted or rewritten to hide a failure.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Violation rows are emitted by validation runs rather than static project configuration.
+  deterministic_examples_planned: true
+  example_scope: Accepted warning, open quarantine, confirmed rejection, resolved quarantine, multiple violations for one source record, invalid resolution fields, and secret redaction.
