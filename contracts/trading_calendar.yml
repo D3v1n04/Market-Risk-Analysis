@@ -1,0 +1,165 @@
+contract_version: 1.0.0
+dataset: trading_calendar
+dataset_class: versioned_reference
+description: Exchange sessions and closures used to distinguish missing market data from expected non-trading dates.
+grain: One row represents one exchange calendar date, including trading and non-trading dates.
+
+primary_key:
+  - exchange_mic
+  - calendar_date
+
+supported_exchanges:
+  - exchange_mic: XNAS
+    exchange_name: Nasdaq Stock Market
+    exchange_timezone: America/New_York
+  - exchange_mic: XNYS
+    exchange_name: New York Stock Exchange
+    exchange_timezone: America/New_York
+
+coverage_policy:
+  required_start_date: 2016-01-01
+  required_end_condition: Calendar covers at least the latest requested market-data date.
+  include_non_trading_dates: true
+  require_contiguous_calendar_dates: true
+
+fields:
+  - name: exchange_mic
+    type: STRING
+    nullable: false
+    allowed_values: [XNAS, XNYS]
+  - name: calendar_date
+    type: DATE
+    nullable: false
+    description: Calendar date, including weekends and exchange holidays.
+  - name: is_trading_day
+    type: BOOLEAN
+    nullable: false
+  - name: market_open_utc
+    type: TIMESTAMP
+    nullable: conditional
+    timezone: UTC
+  - name: market_close_utc
+    type: TIMESTAMP
+    nullable: conditional
+    timezone: UTC
+  - name: is_early_close
+    type: BOOLEAN
+    nullable: false
+  - name: holiday_name
+    type: STRING
+    nullable: true
+    description: Reviewed exchange closure name when applicable; weekends may remain null.
+  - name: exchange_timezone
+    type: STRING
+    nullable: false
+    allowed_values: [America/New_York]
+  - name: calendar_source
+    type: STRING
+    nullable: false
+    description: Pinned package or project source used to generate the schedule.
+  - name: calendar_version
+    type: STRING
+    nullable: false
+    description: Exact source version used to generate the schedule.
+  - name: generated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+conditional_fields:
+  trading_day:
+    when: is_trading_day is true
+    required: [market_open_utc, market_close_utc]
+    assertion: market_close_utc is after market_open_utc.
+  non_trading_day:
+    when: is_trading_day is false
+    must_be_null: [market_open_utc, market_close_utc]
+    required_values:
+      is_early_close: false
+  early_close:
+    when: is_early_close is true
+    required_values:
+      is_trading_day: true
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  boolean_format: lowercase
+  timestamp_format: ISO-8601-UTC
+  fields:
+    - exchange_mic
+    - calendar_date
+    - is_trading_day
+    - market_open_utc
+    - market_close_utc
+    - is_early_close
+    - holiday_name
+    - exchange_timezone
+    - calendar_source
+    - calendar_version
+  excluded_mutable_fields:
+    - generated_at_utc
+
+quality_rules:
+  - rule_id: CALENDAR_BUSINESS_KEY_UNIQUE
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: exchange_mic and calendar_date are unique together.
+  - rule_id: CALENDAR_CONTIGUOUS_DATE_COVERAGE
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: Every calendar date exists for each supported exchange across the required range.
+  - rule_id: CALENDAR_TRADING_DAY_TIMES
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: Trading days have non-null UTC open and close times, with close after open.
+  - rule_id: CALENDAR_NON_TRADING_DAY_TIMES
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: Non-trading days have null open and close times and are not early closes.
+  - rule_id: CALENDAR_EARLY_CLOSE_CONSISTENCY
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: An early close is also a trading day and closes earlier than that exchange's standard local session.
+  - rule_id: CALENDAR_TIMEZONE_VALID
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: Session UTC timestamps are derived from America/New_York rules, including daylight-saving transitions.
+  - rule_id: CALENDAR_EXCHANGE_COVERAGE
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: Every exchange_mic used by an active instrument has calendar coverage.
+  - rule_id: CALENDAR_SOURCE_VERSION_PINNED
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: calendar_source and calendar_version are non-null and reproducible.
+  - rule_id: CALENDAR_WEEKDAY_CLOSURE_NAME
+    severity: WARNING
+    disposition: WARN_AND_REVIEW
+    assertion: A Monday-through-Friday closure normally has a reviewed holiday_name.
+  - rule_id: CALENDAR_WEEKEND_SESSION_ANOMALY
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: Saturday or Sunday is not a trading day unless documented source evidence explicitly supports an exceptional session.
+  - rule_id: CALENDAR_RECORD_HASH_VALID
+    severity: ERROR
+    disposition: FAIL_REFERENCE_GENERATION
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
+usage_policy:
+  missing_price_on_trading_day: Potential data-quality failure or stale/partial batch.
+  missing_price_on_non_trading_day: Expected absence; do not create a missing-price failure.
+  freshness_anchor: Most recent completed expected exchange session.
+  prohibit_weekday_only_logic: true
+
+fixture_policy:
+  canonical_fixture: null
+  reason: The full version-pinned calendar will be generated and validated before ingestion implementation.
+  deterministic_examples_planned: true
+  example_scope: Regular session, weekend, holiday, early close, invalid timestamps, and daylight-saving behavior.
