@@ -1,0 +1,3 @@
+portfolio_id,portfolio_name,strategy_code,base_currency,target_inception_date,actual_inception_date,initial_nav,target_long_ratio,target_short_ratio,target_gross_ratio,target_net_ratio,rebalance_policy,cash_policy,is_active,config_version,record_hash
+CORE_15_LONG,Core 15 Long-Only Portfolio,LONG_ONLY,USD,2016-01-04,,1000000.00,1.0000000000,0.0000000000,1.0000000000,1.0000000000,BUY_AND_HOLD,RETAIN_DIVIDENDS_NO_INTEREST,true,1.0.0,81e22b076e66f95c208fd3a952c50d052780b0b07adff0a1ad2293416e9a5a58
+LONG_SHORT_130_30,Core 15 Long-Short 130/30 Portfolio,LONG_SHORT_130_30,USD,2016-01-04,,1000000.00,1.3000000000,0.3000000000,1.6000000000,1.0000000000,BUY_AND_HOLD,RETAIN_DIVIDENDS_NO_INTEREST,true,1.0.0,cdda67a790f44ad0cf23944311167c07d553fd692c22bf61497e4575bba09643
