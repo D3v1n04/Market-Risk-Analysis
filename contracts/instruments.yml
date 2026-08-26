@@ -1,0 +1,141 @@
+contract_version: 1.0.0
+dataset: instruments
+dataset_class: versioned_reference
+description: Stable identities and reviewed classifications for the 15-instrument MVP universe.
+grain: One row represents one project-recognized financial instrument.
+
+primary_key:
+  - instrument_id
+
+fixture:
+  path: data/fixtures/instruments.csv
+  format: csv
+
+fields:
+  - name: instrument_id
+    type: STRING
+    nullable: false
+    description: Permanent project identifier in uppercase snake case.
+  - name: display_symbol
+    type: STRING
+    nullable: false
+    description: Human-facing market symbol.
+  - name: yfinance_symbol
+    type: STRING
+    nullable: false
+    description: Exact symbol supplied to yfinance.
+  - name: instrument_name
+    type: STRING
+    nullable: false
+    description: Reviewed legal or commonly recognized security name.
+  - name: asset_class
+    type: STRING
+    nullable: false
+    allowed_values: [EQUITY]
+  - name: security_type
+    type: STRING
+    nullable: false
+    allowed_values: [COMMON_STOCK, ADR]
+  - name: exchange_mic
+    type: STRING
+    nullable: false
+    allowed_values: [XNAS, XNYS]
+  - name: quote_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: issuer_country_code
+    type: STRING
+    nullable: false
+    allowed_values: [US, TW]
+  - name: official_sector_name
+    type: STRING
+    nullable: false
+    allowed_values:
+      - Communication Services
+      - Consumer Discretionary
+      - Consumer Staples
+      - Energy
+      - Financials
+      - Health Care
+      - Industrials
+      - Information Technology
+  - name: risk_cluster_id
+    type: STRING
+    nullable: false
+    allowed_values:
+      - SYSTEMIC_CORE_TECHNOLOGY
+      - SEMICONDUCTOR_INFRASTRUCTURE
+      - CONSUMER_AND_LOGISTICS
+      - HEALTHCARE_AND_POLICY_SENSITIVITY
+      - FINANCIAL_FOUNDATIONS
+      - MACRO_AND_GEOPOLITICAL_SENSITIVITY
+  - name: classification_source
+    type: STRING
+    nullable: false
+    description: Provenance label for reviewed listing and sector classifications.
+  - name: classification_as_of_date
+    type: DATE
+    nullable: false
+  - name: active_from
+    type: DATE
+    nullable: false
+  - name: active_to
+    type: DATE
+    nullable: true
+  - name: is_active
+    type: BOOLEAN
+    nullable: false
+  - name: config_version
+    type: STRING
+    nullable: false
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  boolean_format: lowercase
+  fields:
+    - instrument_id
+    - display_symbol
+    - yfinance_symbol
+    - instrument_name
+    - asset_class
+    - security_type
+    - exchange_mic
+    - quote_currency
+    - issuer_country_code
+    - official_sector_name
+    - risk_cluster_id
+    - classification_source
+    - classification_as_of_date
+    - active_from
+    - active_to
+    - is_active
+    - config_version
+
+quality_rules:
+  - rule_id: INSTRUMENT_ACTIVE_COUNT
+    severity: ERROR
+    assertion: Contract version 1.0.0 contains exactly 15 active instruments.
+  - rule_id: INSTRUMENT_ID_UNIQUE
+    severity: ERROR
+    assertion: instrument_id is non-null and unique.
+  - rule_id: INSTRUMENT_PROVIDER_SYMBOL_UNIQUE
+    severity: ERROR
+    assertion: yfinance_symbol is non-null and unique among active instruments.
+  - rule_id: INSTRUMENT_CLASSIFICATION_REQUIRED
+    severity: ERROR
+    assertion: Active instruments have complete sector and classification provenance.
+  - rule_id: INSTRUMENT_ACTIVE_DATE_RANGE
+    severity: ERROR
+    assertion: active_to is null or on or after active_from.
+  - rule_id: INSTRUMENT_RECORD_HASH_VALID
+    severity: ERROR
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
