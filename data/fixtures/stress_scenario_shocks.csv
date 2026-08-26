@@ -1,0 +1,46 @@
+scenario_id,instrument_id,shock_ratio,shock_rationale,scenario_version,record_hash
+BROAD_MARKET_DOWN_10,NVDA_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,1dd0a5672df905809ccdbf277bcf8de7b5645367b5e4a054839eba9cc7bcfc1f
+BROAD_MARKET_DOWN_10,AAPL_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,a599aaf5327d5b1a8f77138de04bc3285500651d3f3339278fd17cb353bdadf9
+BROAD_MARKET_DOWN_10,GOOGL_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,02d1a72e86baa5a02389e971f6fb2c4aec0f23f8f3ea16fc0fce1b16a0830f93
+BROAD_MARKET_DOWN_10,MSFT_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,d9b609d257793943754d2b8f8d27fd59774fb452cf8453191e158622fa41232c
+BROAD_MARKET_DOWN_10,TSM_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,53fd8c999dc56cf954fa5a7de2689a3c555470361abfef29a32c8576d51e9242
+BROAD_MARKET_DOWN_10,AVGO_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,4eb1e416eb1312fc5b1b2b639bb31c5ce443ca8de5e914a158e51c4a8383fc49
+BROAD_MARKET_DOWN_10,AMZN_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,a116836b05ced2ad3e2075d4c5e7e3e4c94b6fe1688dc8c33a5c04eeb3e8704c
+BROAD_MARKET_DOWN_10,WMT_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,aaca4fcf6063b3a96a1ecada48eb1ebcfbddd39a80a5287432fec9bf38c97495
+BROAD_MARKET_DOWN_10,LLY_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,04136f358f969c2f76ea4e0c8617c575f3892bd60c18308188eaebf71bd31eae
+BROAD_MARKET_DOWN_10,UNH_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,bb86503d1bb78590edb83b8b1d5abf816d488634b793650a2bbaed669b83cace
+BROAD_MARKET_DOWN_10,JPM_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,7c02edd11997528f41572560e269f6a9f8bd3cd2cbb7b4289e93fe9650368c77
+BROAD_MARKET_DOWN_10,BRK_B_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,701112cd16cd61de337acd46c44a7f7edbef5023f5208a4bc9fb2dedd34f6ba1
+BROAD_MARKET_DOWN_10,XOM_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,a048a2875e99aeecc45fa5794b209a02f89ebf6d9ed386ef4f5745ca22bbe156
+BROAD_MARKET_DOWN_10,TSLA_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,4d2aabed29304770dc0aed10d421a5c35059effe0d6d3613235e82012f1bba38
+BROAD_MARKET_DOWN_10,LMT_US,-0.1000000000,Uniform broad-market drawdown baseline.,1.0.0,0ce47173db4c89cd9d1a4d46776e224b99bafc823d95eda633271d628a160f7c
+TECHNOLOGY_CORRECTION,NVDA_US,-0.2700000000,High-growth semiconductor sensitivity assumption.,1.0.0,8356274337ef0d2fbd9bfc09f5e830ca56e8706e57c67fe32aa454be095d88ca
+TECHNOLOGY_CORRECTION,AAPL_US,-0.1400000000,Large-cap technology demand sensitivity assumption.,1.0.0,806d0bf2116f11f0818af92b359155a09ecb5d3d57476c28f8ae7f3a7f500c44
+TECHNOLOGY_CORRECTION,GOOGL_US,-0.1600000000,Digital advertising and technology valuation sensitivity assumption.,1.0.0,a22d0268bbb85916a6fada34c8d8fa1daa89b1ebab1c5e03710ecfec5d839327
+TECHNOLOGY_CORRECTION,MSFT_US,-0.1300000000,Enterprise technology valuation sensitivity assumption.,1.0.0,a88d2c210188fcd2594336bd01541c521d795a087c3cf990572bc51575b31a9c
+TECHNOLOGY_CORRECTION,TSM_US,-0.2400000000,Semiconductor-cycle sensitivity assumption.,1.0.0,b321fe2ec10bb39806af7ea3ab4f5be0b69e91268ad598eb64da0408460709d8
+TECHNOLOGY_CORRECTION,AVGO_US,-0.2100000000,Semiconductor and infrastructure-software sensitivity assumption.,1.0.0,09e64d9ba55aa058e3b233e857bb69b79658c60dda8555d97a29403c1441bb3e
+TECHNOLOGY_CORRECTION,AMZN_US,-0.1100000000,Technology and discretionary-demand sensitivity assumption.,1.0.0,0489ea9a04f622b5c886ea55931ae616e450c7897caa89b815793ea76afe7a8c
+TECHNOLOGY_CORRECTION,WMT_US,-0.0200000000,Defensive retail sensitivity assumption.,1.0.0,3451b56d8f44e12121fff95bfa7f464bb73099e6103a01668551eb8b7fb1dd78
+TECHNOLOGY_CORRECTION,LLY_US,-0.0400000000,Lower direct technology sensitivity assumption.,1.0.0,fa67d27a8588f1326ce9db5a5cfa7afc3d67ae8b2e4be0054866e7aee0a26db4
+TECHNOLOGY_CORRECTION,UNH_US,-0.0500000000,Lower direct technology sensitivity assumption.,1.0.0,c675fa4b660e636c617065ece81de1c69bb85499505725be05bd1e732d567ff6
+TECHNOLOGY_CORRECTION,JPM_US,-0.0800000000,Financing and market-risk spillover assumption.,1.0.0,21a681d39fe4ea1d43250e04d80b7f977ae3a2343f4699ccb0b8f568c3e22e6b
+TECHNOLOGY_CORRECTION,BRK_B_US,-0.0400000000,Diversified financial exposure assumption.,1.0.0,cf7b8d2f4b5d154fd91fdd1bf10f0d4358985a8d82e0c2f727db44b5ff001453
+TECHNOLOGY_CORRECTION,XOM_US,0.0100000000,Limited direct technology exposure assumption.,1.0.0,217cf86c5bb9bea7e482522381a24a6e2b0e0fc7d13cf05a63770be04f6b3898
+TECHNOLOGY_CORRECTION,TSLA_US,-0.2300000000,High-volatility growth-equity sensitivity assumption.,1.0.0,3a8de4bed04d81c0cb3c3bb1b8f877c51c835fd91d7183f3edf5239a00c1e384
+TECHNOLOGY_CORRECTION,LMT_US,-0.0100000000,Limited direct technology exposure assumption.,1.0.0,b8041820de81b81266c3c7a5c1adec759665a25f89c11e8cbd981ad19f8c2660
+GEOPOLITICAL_SUPPLY_SHOCK,NVDA_US,-0.1700000000,Semiconductor supply-dependence assumption.,1.0.0,ffc629254fe873982281cb25b766d3523d6df657949b8d2b10718777edb0601c
+GEOPOLITICAL_SUPPLY_SHOCK,AAPL_US,-0.1100000000,Global hardware supply-chain sensitivity assumption.,1.0.0,4ed586ac1778edbb9feaa2924f90e160cb9bc761492260278d56fc19463331ea
+GEOPOLITICAL_SUPPLY_SHOCK,GOOGL_US,-0.0700000000,Broader risk-off technology sensitivity assumption.,1.0.0,7f0cd24d9ac9835573941178a90897aae4525d71228a648a5c40d843c4ebb0a3
+GEOPOLITICAL_SUPPLY_SHOCK,MSFT_US,-0.0600000000,Broader risk-off enterprise technology assumption.,1.0.0,89562e3816daa6f80e15bb8530a0bbcbfb3731f4c84416b81b57363b536f9145
+GEOPOLITICAL_SUPPLY_SHOCK,TSM_US,-0.3200000000,Concentrated semiconductor supply-disruption assumption.,1.0.0,0fef538ca1669fbc0827180e9c4360cb0f9c4616fe4800d5faba5b45805b7c4e
+GEOPOLITICAL_SUPPLY_SHOCK,AVGO_US,-0.1900000000,Semiconductor infrastructure disruption assumption.,1.0.0,74e3a586981f95c4eb9afea5bb26dea0bbebc3db9376d2fb19f3252d5a45bc96
+GEOPOLITICAL_SUPPLY_SHOCK,AMZN_US,-0.0900000000,Global logistics and risk-off demand assumption.,1.0.0,7ded691df063f17b032bf5e85068239c64b78556cba72bb86ac0731c6b2e6d87
+GEOPOLITICAL_SUPPLY_SHOCK,WMT_US,-0.0600000000,Import and logistics cost sensitivity assumption.,1.0.0,aea862c8dea2adaeba90141e3e3ea1e43d85151f525f83605264165cd1079eea
+GEOPOLITICAL_SUPPLY_SHOCK,LLY_US,-0.0300000000,Lower but nonzero global supply sensitivity assumption.,1.0.0,75716df85b71767d5dcc97175ad775f87f996bb39cbc0cb0779c2f1f1551de62
+GEOPOLITICAL_SUPPLY_SHOCK,UNH_US,-0.0500000000,Defensive healthcare with macro uncertainty assumption.,1.0.0,11bf30f048575d3196eaea4f8dc8e3468bf757e58977500bf1c3f63ab5c2f696
+GEOPOLITICAL_SUPPLY_SHOCK,JPM_US,-0.1100000000,Credit and risk-off market sensitivity assumption.,1.0.0,ebfcdb691636816a1371803db3d6f73f06cdf649ea5bc63ae11d1a972ab47f9b
+GEOPOLITICAL_SUPPLY_SHOCK,BRK_B_US,-0.0800000000,Diversified macro and insurance sensitivity assumption.,1.0.0,fd50e09d4e98bad56137614215a4f6a0293f6762feae25690ac6b53baf901fb4
+GEOPOLITICAL_SUPPLY_SHOCK,XOM_US,0.1600000000,Hypothetical energy-price increase assumption.,1.0.0,08000e92436693c5f06d4e482b4f5b037136714dd68aab725b091fb1bae7b7cb
+GEOPOLITICAL_SUPPLY_SHOCK,TSLA_US,-0.1400000000,Supply-chain and high-volatility sensitivity assumption.,1.0.0,a6ee863b499d2ab85fd84a7f13d5d9e6fcabb8afba6c43dee5cae84ec0d4e153
+GEOPOLITICAL_SUPPLY_SHOCK,LMT_US,0.1300000000,Hypothetical defense-demand increase assumption.,1.0.0,b381c8de4baa463047ad7353c150e3359c1decd059b4f5e3944a438d5b0911fa
