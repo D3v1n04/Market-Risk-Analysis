@@ -1,0 +1,75 @@
+contract_version: 1.0.0
+dataset: stress_scenarios
+dataset_class: git_managed_configuration
+description: Reviewed deterministic hypothetical scenarios used to test portfolio sensitivity.
+grain: One row represents one current stress-scenario definition.
+
+primary_key:
+  - scenario_id
+
+fixture:
+  path: data/fixtures/stress_scenarios.csv
+  format: csv
+
+fields:
+  - name: scenario_id
+    type: STRING
+    nullable: false
+  - name: scenario_name
+    type: STRING
+    nullable: false
+  - name: scenario_description
+    type: STRING
+    nullable: false
+  - name: scenario_type
+    type: STRING
+    nullable: false
+    allowed_values: [DETERMINISTIC_HYPOTHETICAL]
+  - name: is_active
+    type: BOOLEAN
+    nullable: false
+  - name: scenario_version
+    type: STRING
+    nullable: false
+  - name: effective_from
+    type: DATE
+    nullable: false
+  - name: effective_to
+    type: DATE
+    nullable: true
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  boolean_format: lowercase
+  fields: [scenario_id, scenario_name, scenario_description, scenario_type, is_active, scenario_version, effective_from, effective_to]
+
+quality_rules:
+  - rule_id: STRESS_SCENARIO_ACTIVE_SET
+    severity: ERROR
+    assertion: Exactly the three approved scenario IDs are active in version 1.0.0.
+  - rule_id: STRESS_SCENARIO_ID_UNIQUE
+    severity: ERROR
+    assertion: scenario_id is non-null and unique in the current fixture.
+  - rule_id: STRESS_SCENARIO_TYPE_VALID
+    severity: ERROR
+    assertion: scenario_type is DETERMINISTIC_HYPOTHETICAL.
+  - rule_id: STRESS_SCENARIO_LANGUAGE_HYPOTHETICAL
+    severity: ERROR
+    assertion: Names and descriptions identify assumptions rather than forecasts.
+  - rule_id: STRESS_SCENARIO_EFFECTIVE_RANGE
+    severity: ERROR
+    assertion: effective_to is null or on or after effective_from and versions do not overlap.
+  - rule_id: STRESS_SCENARIO_SHOCK_COVERAGE
+    severity: ERROR
+    assertion: Every active scenario has exactly 15 unique active instrument shocks.
+  - rule_id: STRESS_SCENARIO_RECORD_HASH_VALID
+    severity: ERROR
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
