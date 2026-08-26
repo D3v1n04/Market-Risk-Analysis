@@ -1,0 +1,86 @@
+contract_version: 1.0.0
+dataset: stress_scenario_shocks
+dataset_class: git_managed_configuration
+description: One signed hypothetical price-return shock for every instrument in every active scenario.
+grain: One row represents one instrument shock within one current stress scenario.
+
+primary_key:
+  - scenario_id
+  - instrument_id
+
+foreign_keys:
+  - fields: [scenario_id]
+    references: stress_scenarios.scenario_id
+  - fields: [instrument_id]
+    references: instruments.instrument_id
+
+fixture:
+  path: data/fixtures/stress_scenario_shocks.csv
+  format: csv
+
+fields:
+  - name: scenario_id
+    type: STRING
+    nullable: false
+  - name: instrument_id
+    type: STRING
+    nullable: false
+  - name: shock_ratio
+    type: DECIMAL(12,10)
+    nullable: false
+    minimum_inclusive: '-1.0000000000'
+    description: Signed hypothetical price-return shock; -0.10 means a 10 percent decline.
+  - name: shock_rationale
+    type: STRING
+    nullable: false
+    description: Plain-language reason for the deterministic test assumption.
+  - name: scenario_version
+    type: STRING
+    nullable: false
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  fields: [scenario_id, instrument_id, shock_ratio, shock_rationale, scenario_version]
+
+calculation_policy:
+  position_stress_pnl_formula: signed_market_value * shock_ratio
+  portfolio_stress_pnl_formula: Sum position stress P&L across all 15 instruments.
+  short_position_behavior: A negative market value gains when the shock ratio is negative and loses when it is positive.
+  prohibit_forecast_label: true
+  historical_replay_is_separate: true
+
+quality_rules:
+  - rule_id: STRESS_SHOCK_BUSINESS_KEY_UNIQUE
+    severity: ERROR
+    assertion: scenario_id and instrument_id are unique together.
+  - rule_id: STRESS_SHOCK_FOREIGN_KEYS_VALID
+    severity: ERROR
+    assertion: Every scenario and instrument reference resolves to an active fixture record.
+  - rule_id: STRESS_SHOCK_ACTIVE_COVERAGE
+    severity: ERROR
+    assertion: Each active scenario has exactly 15 shocks covering the active instrument universe once.
+  - rule_id: STRESS_SHOCK_MINIMUM_VALID
+    severity: ERROR
+    assertion: shock_ratio is not below -1.0 because an equity price cannot fall by more than 100 percent.
+  - rule_id: STRESS_SHOCK_EXTREME_GAIN_REVIEW
+    severity: WARNING
+    assertion: A shock above 1.0 requires explicit review and rationale.
+  - rule_id: STRESS_SHOCK_RATIONALE_REQUIRED
+    severity: ERROR
+    assertion: shock_rationale is nonempty and describes the hypothetical assumption.
+  - rule_id: STRESS_SHOCK_VERSION_MATCH
+    severity: ERROR
+    assertion: scenario_version matches the referenced parent scenario version.
+  - rule_id: STRESS_BROAD_MARKET_BASELINE
+    severity: ERROR
+    assertion: BROAD_MARKET_DOWN_10 assigns -0.1000000000 to all 15 active instruments.
+  - rule_id: STRESS_SHOCK_RECORD_HASH_VALID
+    severity: ERROR
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
