@@ -1,0 +1,192 @@
+contract_version: 1.0.0
+dataset: corporate_actions
+dataset_class: sourced_observation
+description: Explicit cash-dividend and stock-split events used to reconcile prices, quantities, cash, and returns.
+grain: One row represents one sourced corporate action type for one instrument and effective date.
+
+business_key:
+  - instrument_id
+  - effective_date
+  - action_type
+  - source_id
+
+foreign_keys:
+  - fields: [instrument_id]
+    references: instruments.instrument_id
+  - fields: [batch_id]
+    references: ingestion_batches.batch_id
+
+fields:
+  - name: instrument_id
+    type: STRING
+    nullable: false
+    description: Reviewed internal instrument identifier.
+  - name: effective_date
+    type: DATE
+    nullable: false
+    description: Provider ex-date or effective business date.
+  - name: action_type
+    type: STRING
+    nullable: false
+    allowed_values: [CASH_DIVIDEND, STOCK_SPLIT]
+  - name: source_id
+    type: STRING
+    nullable: false
+    allowed_values: [YAHOO_FINANCE]
+  - name: source_symbol
+    type: STRING
+    nullable: false
+    description: Exact yfinance symbol associated with the event.
+  - name: dividend_amount_per_share
+    type: DECIMAL(20,8)
+    nullable: conditional
+    unit: dividend_currency_per_share
+  - name: dividend_currency
+    type: STRING
+    nullable: conditional
+    allowed_values: [USD]
+  - name: split_ratio
+    type: DECIMAL(20,10)
+    nullable: conditional
+    description: New shares received per old share; a 2-for-1 split is 2.0.
+  - name: source_action_id
+    type: STRING
+    nullable: true
+    description: Provider action identifier only when genuinely supplied.
+  - name: source_updated_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: source_record_id
+    type: STRING
+    nullable: false
+    description: Deterministic identifier of the delivered event record.
+  - name: batch_id
+    type: STRING
+    nullable: false
+  - name: ingested_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+conditional_fields:
+  CASH_DIVIDEND:
+    required:
+      dividend_amount_per_share: greater_than_zero
+      dividend_currency: USD
+    must_be_null: [split_ratio]
+  STOCK_SPLIT:
+    required:
+      split_ratio: positive_and_not_one
+    must_be_null: [dividend_amount_per_share, dividend_currency]
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_scale
+  fields:
+    - instrument_id
+    - effective_date
+    - action_type
+    - source_id
+    - source_symbol
+    - dividend_amount_per_share
+    - dividend_currency
+    - split_ratio
+    - source_action_id
+  excluded_mutable_fields:
+    - source_updated_at_utc
+    - batch_id
+    - ingested_at_utc
+    - contract_version
+
+analytical_treatment:
+  stock_split:
+    quantity_formula: post_split_quantity = pre_split_quantity * split_ratio
+    expected_raw_price_behavior: Raw price changes inversely with the split ratio, subject to market movement.
+    expected_market_value_behavior: A split alone must not create portfolio profit or loss.
+  cash_dividend:
+    long_cash_formula: dividend_cash = quantity * dividend_amount_per_share
+    short_cash_formula: dividend_cash = quantity * dividend_amount_per_share
+    sign_note: Negative short quantity produces negative cash because the short seller owes the dividend.
+  return_policy:
+    use_adjusted_close_for_historical_returns: true
+    add_dividend_to_adjusted_return_again: false
+    rationale: Adjusted close already incorporates provider corporate-action adjustments; adding the dividend again would double count it.
+
+quality_rules:
+  - rule_id: ACTION_REQUIRED_FIELDS
+    severity: ERROR
+    disposition: REJECT
+    assertion: Every unconditional required field is present and nonempty.
+  - rule_id: ACTION_BUSINESS_KEY_UNIQUE
+    severity: ERROR
+    disposition: REJECT
+    assertion: instrument_id, effective_date, action_type, and source_id are unique for a canonical event version.
+  - rule_id: ACTION_INSTRUMENT_MAPPING
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: source_symbol resolves to the stated active instrument_id.
+  - rule_id: ACTION_TYPE_ALLOWED
+    severity: ERROR
+    disposition: REJECT
+    assertion: action_type is CASH_DIVIDEND or STOCK_SPLIT.
+  - rule_id: ACTION_DIVIDEND_FIELDS
+    severity: ERROR
+    disposition: REJECT
+    assertion: A cash dividend has a positive USD amount and a null split ratio.
+  - rule_id: ACTION_SPLIT_FIELDS
+    severity: ERROR
+    disposition: REJECT
+    assertion: A stock split has a positive ratio other than 1.0 and null dividend fields.
+  - rule_id: ACTION_EFFECTIVE_SESSION
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: effective_date follows a verified provider and exchange-session convention.
+  - rule_id: ACTION_SAME_BATCH_IDENTICAL_DUPLICATE
+    severity: WARNING
+    disposition: WARN_AND_DEDUPLICATE
+    assertion: Identical same-key and same-hash events in one batch produce one candidate event.
+  - rule_id: ACTION_SAME_BATCH_CONFLICT
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Differing same-key candidates in one batch are not resolved by arrival order.
+  - rule_id: ACTION_LATER_BATCH_UNCHANGED
+    severity: INFO
+    disposition: UNCHANGED
+    assertion: A later overlap with the same key and hash does not create a new canonical version.
+  - rule_id: ACTION_LATER_BATCH_CORRECTION
+    severity: INFO
+    disposition: ACCEPT_CORRECTION
+    assertion: A valid later changed event supersedes the current version while preserving history.
+  - rule_id: ACTION_INVALID_CORRECTION
+    severity: ERROR
+    disposition: REJECT
+    assertion: An invalid correction never replaces the prior valid event.
+  - rule_id: ACTION_SPLIT_POSITION_RECONCILIATION
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Post-split position quantity equals prior quantity multiplied by split_ratio.
+  - rule_id: ACTION_NO_RETURN_DOUBLE_COUNT
+    severity: ERROR
+    disposition: REJECT_DERIVATION
+    assertion: Adjusted-price returns do not add the same dividend or split adjustment again.
+  - rule_id: ACTION_RECORD_HASH_VALID
+    severity: ERROR
+    disposition: REJECT
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Real corporate actions are not downloaded during Phase 03.
+  deterministic_examples_planned: true
+  example_scope: Valid and invalid dividends, 2-for-1 splits, mixed action fields, duplicates, corrections, short dividends owed, and split market-value reconciliation.
