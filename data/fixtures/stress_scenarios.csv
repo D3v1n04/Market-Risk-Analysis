@@ -1,0 +1,4 @@
+scenario_id,scenario_name,scenario_description,scenario_type,is_active,scenario_version,effective_from,effective_to,record_hash
+BROAD_MARKET_DOWN_10,Broad Market Down 10 Percent,Hypothetical uniform 10 percent equity drawdown used as a reconciliation baseline.,DETERMINISTIC_HYPOTHETICAL,true,1.0.0,2026-08-26,,f1cae97f7c8634b8537036461114ec1647532766d0f4162010b582ccbc5ae231
+TECHNOLOGY_CORRECTION,Technology Correction,Hypothetical varied correction led by technology and semiconductor instruments.,DETERMINISTIC_HYPOTHETICAL,true,1.0.0,2026-08-26,,400cdc1abea2015b554fdb53b7556d82a8d81024ec0fa810bc7d5f9abb22a6d9
+GEOPOLITICAL_SUPPLY_SHOCK,Geopolitical Supply Shock,Hypothetical global supply disruption with semiconductor losses and energy and defense gains.,DETERMINISTIC_HYPOTHETICAL,true,1.0.0,2026-08-26,,b3c99d6cc0ec8508320d2bb6c75df073e165e069d3f67d8ffce7d7100cc813e5
