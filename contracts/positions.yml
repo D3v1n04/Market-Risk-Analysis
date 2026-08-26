@@ -1,0 +1,133 @@
+contract_version: 1.0.0
+dataset: positions
+dataset_class: derived_daily_observation
+description: Split-adjusted daily position quantities used for valuation and exposure analysis.
+grain: One row represents one portfolio's quantity in one instrument at the close of one business date.
+
+primary_key:
+  - portfolio_id
+  - instrument_id
+  - position_date
+
+foreign_keys:
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [instrument_id]
+    references: instruments.instrument_id
+  - fields: [portfolio_id, instrument_id, allocation_effective_from]
+    references: target_allocations.[portfolio_id, instrument_id, effective_from]
+  - fields: [batch_id]
+    references: ingestion_batches.batch_id
+
+fields:
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+    description: Stable portfolio identifier.
+  - name: instrument_id
+    type: STRING
+    nullable: false
+    description: Stable instrument identifier.
+  - name: position_date
+    type: DATE
+    nullable: false
+    description: Closing business date represented by the snapshot.
+  - name: quantity
+    type: DECIMAL(24,8)
+    nullable: false
+    description: Signed split-adjusted shares; positive is long and negative is short.
+  - name: position_basis
+    type: STRING
+    nullable: false
+    allowed_values: [INITIAL_ALLOCATION, SPLIT_ADJUSTED_CARRY_FORWARD]
+  - name: allocation_effective_from
+    type: DATE
+    nullable: false
+    description: Allocation version used to initialize the position.
+  - name: source_record_id
+    type: STRING
+    nullable: false
+    description: Deterministic identifier for the derived snapshot.
+  - name: batch_id
+    type: STRING
+    nullable: false
+    description: Batch that created the position snapshot.
+  - name: derived_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_scale
+  timestamp_format: ISO-8601-UTC
+  fields:
+    - portfolio_id
+    - instrument_id
+    - position_date
+    - quantity
+    - position_basis
+    - allocation_effective_from
+    - source_record_id
+    - contract_version
+
+derivation:
+  initial_quantity_formula: target_weight * initial_nav / validated_raw_close_price
+  split_carry_forward_formula: prior_quantity * split_ratio
+  rounding_scale: 8
+  fractional_shares_allowed: true
+  rationale: Fractional shares minimize allocation drift and keep deterministic target reconciliation.
+
+quality_rules:
+  - rule_id: POSITION_BUSINESS_KEY_UNIQUE
+    severity: ERROR
+    disposition: REJECT
+    assertion: portfolio_id, instrument_id, and position_date are unique together.
+  - rule_id: POSITION_REFERENCES_VALID
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Portfolio, instrument, allocation, and batch references resolve.
+  - rule_id: POSITION_NONZERO_QUANTITY
+    severity: ERROR
+    disposition: REJECT
+    assertion: quantity is not zero; zero positions are omitted.
+  - rule_id: POSITION_STRATEGY_SIGN
+    severity: ERROR
+    disposition: REJECT
+    assertion: Long-only quantities are positive and long-short signs match approved allocations.
+  - rule_id: POSITION_VALID_SESSION
+    severity: ERROR
+    disposition: REJECT
+    assertion: position_date is an expected trading session for the instrument.
+  - rule_id: POSITION_DAILY_COVERAGE
+    severity: ERROR
+    disposition: PARTIAL_BATCH
+    assertion: Each active portfolio has all 15 required instrument snapshots for a complete date.
+  - rule_id: POSITION_BUY_AND_HOLD_CONTINUITY
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Quantity is unchanged between sessions unless a documented split applies.
+  - rule_id: POSITION_SPLIT_RECONCILIATION
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Post-split quantity equals prior quantity multiplied by the reviewed split ratio.
+  - rule_id: POSITION_RECORD_HASH_VALID
+    severity: ERROR
+    disposition: REJECT
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Actual quantities depend on validated starting prices that are unavailable in Phase 03.
+  deterministic_examples_planned: true
+  example_scope: Small pass/fail records for sign, zero quantity, duplicate key, coverage, and split behavior.
