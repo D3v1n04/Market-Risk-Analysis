@@ -218,11 +218,51 @@ def test_stress_fixtures_have_complete_coverage_and_valid_hashes() -> None:
     _assert_record_hashes(shocks, shock_contract)
 
 
+def test_contract_examples_reference_known_rules_and_expected_outcomes() -> None:
+    path = FIXTURE_DIR / "contract_examples.yml"
+    examples = yaml.safe_load(path.read_text(encoding="utf-8"))
+    cases = examples["cases"]
+    allowed_dispositions = set(examples["allowed_expected_dispositions"])
+
+    assert examples["fixture_version"] == "1.0.0"
+    assert len(cases) == 28
+    assert len({case["case_id"] for case in cases}) == 28
+
+    required_cases = {
+        "PRICE_MISSING_VOLUME",
+        "PRICE_NEGATIVE_CLOSE",
+        "PRICE_IDENTICAL_DUPLICATE",
+        "ACTION_VALID_SPLIT",
+        "ACTION_MIXED_FIELDS",
+        "CALENDAR_VALID_HOLIDAY",
+        "POSITION_LONG_ONLY_NEGATIVE",
+        "POSITION_VALID_SPLIT_CARRY",
+        "BATCH_VALID_WARNING_SUCCESS",
+        "BATCH_COUNT_MISMATCH",
+        "VIOLATION_VALID_RESOLVED",
+        "VIOLATION_MULTIPLE_RULES_ONE_RECORD",
+    }
+    assert required_cases <= {case["case_id"] for case in cases}
+
+    rule_ids_by_dataset = {
+        dataset: {
+            rule["rule_id"] for rule in _load_contract(dataset)["quality_rules"]
+        }
+        for dataset in {case["dataset"] for case in cases}
+    }
+    for case in cases:
+        assert case["rule_id"] in rule_ids_by_dataset[case["dataset"]]
+        assert case["expected_disposition"] in allowed_dispositions
+        assert isinstance(case["input"], dict) and case["input"]
+        assert case["reason"].strip()
+
+
 def test_contract_artifacts_contain_no_placeholders() -> None:
     placeholder_pattern = re.compile(r"\b(?:HASH_(?:S)?\d+|TODO|TBD)\b")
     artifact_paths = [
         *CONTRACT_DIR.glob("*.yml"),
         *FIXTURE_DIR.glob("*.csv"),
+        *FIXTURE_DIR.glob("*.yml"),
     ]
 
     for path in artifact_paths:
