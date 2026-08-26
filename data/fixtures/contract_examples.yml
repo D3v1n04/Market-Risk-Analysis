@@ -1,0 +1,210 @@
+fixture_version: 1.0.0
+purpose: Deterministic pass and fail examples for Phase 03 contract review and future validator implementation.
+
+allowed_expected_dispositions:
+  - ACCEPT
+  - ACCEPT_CORRECTION
+  - FAIL_BATCH_AUDIT
+  - FAIL_REFERENCE_GENERATION
+  - QUARANTINE
+  - REJECT
+  - RESOLVED
+  - WARN_AND_ACCEPT
+  - WARN_AND_DEDUPLICATE
+
+cases:
+  - case_id: PRICE_VALID_COMPLETE
+    dataset: daily_prices
+    rule_id: PRICE_REQUIRED_FIELDS
+    expected_disposition: ACCEPT
+    input: {instrument_id: MSFT_US, price_date: 2026-08-24, open_price: '500.00', high_price: '505.00', low_price: '498.00', close_price: '501.00', adjusted_close_price: '501.00', volume: 25000000}
+    reason: Complete positive and internally consistent price data is usable.
+
+  - case_id: PRICE_MISSING_VOLUME
+    dataset: daily_prices
+    rule_id: PRICE_VOLUME_MISSING_OR_ZERO
+    expected_disposition: WARN_AND_ACCEPT
+    input: {instrument_id: MSFT_US, price_date: 2026-08-24, close_price: '501.00', volume: null}
+    reason: Price-based risk analysis remains usable while missing volume stays visible.
+
+  - case_id: PRICE_NEGATIVE_CLOSE
+    dataset: daily_prices
+    rule_id: PRICE_POSITIVE_VALUES
+    expected_disposition: REJECT
+    input: {instrument_id: MSFT_US, price_date: 2026-08-24, close_price: '-501.00'}
+    reason: An equity closing price cannot be negative.
+
+  - case_id: PRICE_CLOSE_ABOVE_HIGH
+    dataset: daily_prices
+    rule_id: PRICE_OHLC_CONSISTENCY
+    expected_disposition: REJECT
+    input: {open_price: '495.00', high_price: '500.00', low_price: '490.00', close_price: '501.00'}
+    reason: The reported close cannot exceed the reported session high.
+
+  - case_id: PRICE_WEEKEND_SESSION
+    dataset: daily_prices
+    rule_id: PRICE_VALID_SESSION
+    expected_disposition: REJECT
+    input: {instrument_id: MSFT_US, price_date: 2026-08-23, close_price: '501.00'}
+    reason: Sunday is not an expected Nasdaq session.
+
+  - case_id: PRICE_UNKNOWN_SYMBOL
+    dataset: daily_prices
+    rule_id: PRICE_INSTRUMENT_MAPPING
+    expected_disposition: QUARANTINE
+    input: {source_symbol: UNKNOWN, price_date: 2026-08-24, close_price: '10.00'}
+    reason: The observation cannot be safely joined until identity is reviewed.
+
+  - case_id: PRICE_IDENTICAL_DUPLICATE
+    dataset: daily_prices
+    rule_id: PRICE_SAME_BATCH_IDENTICAL_DUPLICATE
+    expected_disposition: WARN_AND_DEDUPLICATE
+    input: {candidate_count: 2, distinct_record_hash_count: 1}
+    reason: One observation is retained without processing identical input twice.
+
+  - case_id: PRICE_CONFLICTING_DUPLICATE
+    dataset: daily_prices
+    rule_id: PRICE_SAME_BATCH_CONFLICT
+    expected_disposition: QUARANTINE
+    input: {candidate_closes: ['500.00', '501.00'], same_business_key: true}
+    reason: Arrival order is not a trustworthy tie-breaker within one batch.
+
+  - case_id: PRICE_VALID_LATER_CORRECTION
+    dataset: daily_prices
+    rule_id: PRICE_LATER_BATCH_CORRECTION
+    expected_disposition: ACCEPT_CORRECTION
+    input: {prior_close: '500.00', corrected_close: '501.00', later_batch: true, correction_valid: true}
+    reason: A valid later source version may supersede the current value while history remains.
+
+  - case_id: ACTION_VALID_DIVIDEND
+    dataset: corporate_actions
+    rule_id: ACTION_DIVIDEND_FIELDS
+    expected_disposition: ACCEPT
+    input: {action_type: CASH_DIVIDEND, dividend_amount_per_share: '1.50', dividend_currency: USD, split_ratio: null}
+    reason: Required dividend fields are present and split fields do not apply.
+
+  - case_id: ACTION_VALID_SPLIT
+    dataset: corporate_actions
+    rule_id: ACTION_SPLIT_FIELDS
+    expected_disposition: ACCEPT
+    input: {action_type: STOCK_SPLIT, split_ratio: '2.0000000000', dividend_amount_per_share: null, dividend_currency: null}
+    reason: A 2-for-1 split is represented as two new shares per old share.
+
+  - case_id: ACTION_MIXED_FIELDS
+    dataset: corporate_actions
+    rule_id: ACTION_SPLIT_FIELDS
+    expected_disposition: REJECT
+    input: {action_type: STOCK_SPLIT, split_ratio: '2.0000000000', dividend_amount_per_share: '1.50'}
+    reason: One event row cannot mix split and dividend grains.
+
+  - case_id: ACTION_NOOP_SPLIT
+    dataset: corporate_actions
+    rule_id: ACTION_SPLIT_FIELDS
+    expected_disposition: REJECT
+    input: {action_type: STOCK_SPLIT, split_ratio: '1.0000000000'}
+    reason: A one-for-one ratio is not an economic split event.
+
+  - case_id: CALENDAR_VALID_HOLIDAY
+    dataset: trading_calendar
+    rule_id: CALENDAR_NON_TRADING_DAY_TIMES
+    expected_disposition: ACCEPT
+    input: {exchange_mic: XNYS, calendar_date: 2026-12-25, is_trading_day: false, market_open_utc: null, market_close_utc: null, is_early_close: false}
+    reason: A holiday closure correctly has no session timestamps.
+
+  - case_id: CALENDAR_CLOSED_WITH_TIMES
+    dataset: trading_calendar
+    rule_id: CALENDAR_NON_TRADING_DAY_TIMES
+    expected_disposition: FAIL_REFERENCE_GENERATION
+    input: {is_trading_day: false, market_open_utc: '2026-12-25T14:30:00Z', market_close_utc: '2026-12-25T21:00:00Z'}
+    reason: A closed exchange cannot simultaneously have an open session.
+
+  - case_id: CALENDAR_INVALID_EARLY_CLOSE
+    dataset: trading_calendar
+    rule_id: CALENDAR_EARLY_CLOSE_CONSISTENCY
+    expected_disposition: FAIL_REFERENCE_GENERATION
+    input: {is_trading_day: false, is_early_close: true}
+    reason: Early close is meaningful only for an actual trading session.
+
+  - case_id: POSITION_LONG_ONLY_POSITIVE
+    dataset: positions
+    rule_id: POSITION_STRATEGY_SIGN
+    expected_disposition: ACCEPT
+    input: {portfolio_id: CORE_15_LONG, instrument_id: NVDA_US, quantity: '760.00000000'}
+    reason: A positive quantity is valid for the long-only strategy.
+
+  - case_id: POSITION_LONG_ONLY_NEGATIVE
+    dataset: positions
+    rule_id: POSITION_STRATEGY_SIGN
+    expected_disposition: REJECT
+    input: {portfolio_id: CORE_15_LONG, instrument_id: NVDA_US, quantity: '-760.00000000'}
+    reason: The long-only portfolio cannot contain a short position.
+
+  - case_id: POSITION_LONG_SHORT_NEGATIVE
+    dataset: positions
+    rule_id: POSITION_STRATEGY_SIGN
+    expected_disposition: ACCEPT
+    input: {portfolio_id: LONG_SHORT_130_30, instrument_id: TSLA_US, quantity: '-400.00000000'}
+    reason: Negative quantity matches the approved TSLA short allocation.
+
+  - case_id: POSITION_VALID_SPLIT_CARRY
+    dataset: positions
+    rule_id: POSITION_SPLIT_RECONCILIATION
+    expected_disposition: ACCEPT
+    input: {prior_quantity: '20.00000000', split_ratio: '2.0000000000', post_split_quantity: '40.00000000'}
+    reason: Quantity doubles under a valid 2-for-1 split.
+
+  - case_id: BATCH_VALID_WARNING_SUCCESS
+    dataset: ingestion_batches
+    rule_id: BATCH_WARNING_STATUS_CONSISTENT
+    expected_disposition: ACCEPT
+    input: {status: SUCCEEDED_WITH_WARNINGS, received_count: 15, accepted_count: 15, quarantined_count: 0, rejected_count: 0, unchanged_count: 0, deduplicated_count: 0, warning_count: 1}
+    reason: Complete usable coverage may succeed while retaining a visible warning.
+
+  - case_id: BATCH_COUNT_MISMATCH
+    dataset: ingestion_batches
+    rule_id: BATCH_COUNT_RECONCILIATION
+    expected_disposition: FAIL_BATCH_AUDIT
+    input: {received_count: 15, accepted_count: 13, quarantined_count: 1, rejected_count: 0, unchanged_count: 0, deduplicated_count: 0}
+    reason: Mutually exclusive outcomes total 14 rather than 15.
+
+  - case_id: BATCH_VALID_RETRY
+    dataset: ingestion_batches
+    rule_id: BATCH_RETRY_LINK_VALID
+    expected_disposition: ACCEPT
+    input: {batch_type: RETRY, batch_id: 22222222-2222-4222-8222-222222222222, retry_of_batch_id: 11111111-1111-4111-8111-111111111111, attempt_number: 2}
+    reason: A retry uses a new ID and links the prior attempt.
+
+  - case_id: BATCH_TERMINAL_WITHOUT_COMPLETION
+    dataset: ingestion_batches
+    rule_id: BATCH_COMPLETION_TIMESTAMP_CONSISTENT
+    expected_disposition: FAIL_BATCH_AUDIT
+    input: {status: SUCCEEDED, completed_at_utc: null}
+    reason: A terminal batch must record when it completed.
+
+  - case_id: VIOLATION_VALID_OPEN
+    dataset: data_quality_violations
+    rule_id: VIOLATION_OPEN_FIELDS_NULL
+    expected_disposition: ACCEPT
+    input: {resolution_status: OPEN, resolution_action: null, resolution_batch_id: null, resolved_at_utc: null, resolution_note: null}
+    reason: An unresolved violation has no resolution metadata.
+
+  - case_id: VIOLATION_OPEN_WITH_RESOLUTION
+    dataset: data_quality_violations
+    rule_id: VIOLATION_OPEN_FIELDS_NULL
+    expected_disposition: FAIL_BATCH_AUDIT
+    input: {resolution_status: OPEN, resolution_action: ACCEPT_AFTER_FIX}
+    reason: Open status contradicts populated resolution metadata.
+
+  - case_id: VIOLATION_VALID_RESOLVED
+    dataset: data_quality_violations
+    rule_id: VIOLATION_RESOLVED_FIELDS_COMPLETE
+    expected_disposition: RESOLVED
+    input: {resolution_status: RESOLVED, resolution_action: ACCEPT_AFTER_FIX, resolution_batch_id: 22222222-2222-4222-8222-222222222222, resolved_at_utc: '2026-08-26T20:00:00Z', resolution_note: Mapping added and immutable record reprocessed.}
+    reason: Every required resolution field is populated through a later batch.
+
+  - case_id: VIOLATION_MULTIPLE_RULES_ONE_RECORD
+    dataset: data_quality_violations
+    rule_id: VIOLATION_NATURAL_KEY_UNIQUE
+    expected_disposition: ACCEPT
+    input: {received_source_records: 1, source_record_id: PRICE_MSFT_20260824, distinct_rule_ids: [PRICE_VOLUME_MISSING_OR_ZERO, PRICE_LATE_ARRIVAL], violation_rows: 2}
+    reason: Multiple rule findings do not multiply the batch received-record count.
