@@ -1,0 +1,197 @@
+contract_version: 1.0.0
+dataset: daily_prices
+dataset_class: sourced_observation
+description: Corporate-action-aware end-of-day market observations for valuation and risk analysis.
+grain: One row represents one source's end-of-day price observation for one instrument and trading date.
+
+business_key:
+  - instrument_id
+  - price_date
+  - source_id
+
+foreign_keys:
+  - fields: [instrument_id]
+    references: instruments.instrument_id
+  - fields: [batch_id]
+    references: ingestion_batches.batch_id
+
+fields:
+  - name: instrument_id
+    type: STRING
+    nullable: false
+    description: Reviewed internal instrument identifier.
+  - name: price_date
+    type: DATE
+    nullable: false
+    description: Exchange session date represented by the bar.
+  - name: source_id
+    type: STRING
+    nullable: false
+    allowed_values: [YAHOO_FINANCE]
+  - name: source_symbol
+    type: STRING
+    nullable: false
+    description: Exact yfinance symbol used for retrieval.
+  - name: open_price
+    type: DECIMAL(20,8)
+    nullable: false
+    unit: quote_currency_per_share
+    minimum_exclusive: 0
+  - name: high_price
+    type: DECIMAL(20,8)
+    nullable: false
+    unit: quote_currency_per_share
+    minimum_exclusive: 0
+  - name: low_price
+    type: DECIMAL(20,8)
+    nullable: false
+    unit: quote_currency_per_share
+    minimum_exclusive: 0
+  - name: close_price
+    type: DECIMAL(20,8)
+    nullable: false
+    unit: quote_currency_per_share
+    minimum_exclusive: 0
+    analytical_use: Position valuation on price_date.
+  - name: adjusted_close_price
+    type: DECIMAL(20,8)
+    nullable: false
+    unit: quote_currency_per_share
+    minimum_exclusive: 0
+    analytical_use: Corporate-action-aware historical returns after reconciliation.
+  - name: volume
+    type: BIGINT
+    nullable: true
+    unit: shares
+    minimum_inclusive: 0
+    null_behavior: Accept the price observation and create a warning.
+  - name: quote_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: source_updated_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+    description: Provider update time only when genuinely supplied.
+  - name: source_record_id
+    type: STRING
+    nullable: false
+    description: Deterministic identifier of the delivered source observation.
+  - name: batch_id
+    type: STRING
+    nullable: false
+    description: Ingestion attempt that delivered this record.
+  - name: ingested_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_scale
+  fields:
+    - instrument_id
+    - price_date
+    - source_id
+    - source_symbol
+    - open_price
+    - high_price
+    - low_price
+    - close_price
+    - adjusted_close_price
+    - volume
+    - quote_currency
+  excluded_mutable_fields:
+    - source_updated_at_utc
+    - batch_id
+    - ingested_at_utc
+    - contract_version
+
+analytical_price_policy:
+  position_valuation: close_price
+  historical_returns: adjusted_close_price
+  preserve_both_series: true
+  prohibit_silent_substitution: true
+
+quality_rules:
+  - rule_id: PRICE_REQUIRED_FIELDS
+    severity: ERROR
+    disposition: REJECT
+    assertion: Every non-nullable field is present and nonempty.
+  - rule_id: PRICE_INSTRUMENT_MAPPING
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: source_symbol resolves to the stated active instrument_id.
+  - rule_id: PRICE_POSITIVE_VALUES
+    severity: ERROR
+    disposition: REJECT
+    assertion: Open, high, low, close, and adjusted close are greater than zero.
+  - rule_id: PRICE_OHLC_CONSISTENCY
+    severity: ERROR
+    disposition: REJECT
+    assertion: High contains open, low, and close; low does not exceed open, high, or close.
+  - rule_id: PRICE_VOLUME_MISSING_OR_ZERO
+    severity: WARNING
+    disposition: WARN_AND_ACCEPT
+    assertion: Null or zero volume is visible but does not invalidate usable prices.
+  - rule_id: PRICE_VOLUME_NEGATIVE
+    severity: ERROR
+    disposition: REJECT
+    assertion: Volume is never negative.
+  - rule_id: PRICE_VALID_SESSION
+    severity: ERROR
+    disposition: REJECT
+    assertion: price_date is an expected session for the instrument exchange.
+  - rule_id: PRICE_SUPPORTED_CURRENCY
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Quote currency matches the instrument currency and the USD-only MVP.
+  - rule_id: PRICE_SAME_BATCH_IDENTICAL_DUPLICATE
+    severity: WARNING
+    disposition: WARN_AND_DEDUPLICATE
+    assertion: Identical same-key and same-hash rows in one batch produce one candidate observation.
+  - rule_id: PRICE_SAME_BATCH_CONFLICT
+    severity: ERROR
+    disposition: QUARANTINE
+    assertion: Differing same-key candidates in one batch are not resolved by arrival order.
+  - rule_id: PRICE_LATER_BATCH_UNCHANGED
+    severity: INFO
+    disposition: UNCHANGED
+    assertion: A later overlap with the same key and hash does not create a new canonical version.
+  - rule_id: PRICE_LATER_BATCH_CORRECTION
+    severity: INFO
+    disposition: ACCEPT_CORRECTION
+    assertion: A valid later overlap with a changed hash supersedes the current canonical version while preserving history.
+  - rule_id: PRICE_INVALID_CORRECTION
+    severity: ERROR
+    disposition: REJECT
+    assertion: An invalid correction never replaces the prior valid canonical observation.
+  - rule_id: PRICE_LATE_ARRIVAL
+    severity: WARNING
+    disposition: WARN_AND_ACCEPT
+    assertion: A valid late observation is retained with its timeliness warning.
+  - rule_id: PRICE_EXPECTED_COVERAGE
+    severity: ERROR
+    disposition: PARTIAL_BATCH
+    assertion: The latest expected session contains one valid current price for all 15 active instruments.
+  - rule_id: PRICE_RECORD_HASH_VALID
+    severity: ERROR
+    disposition: REJECT
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Real price observations are not downloaded during Phase 03.
+  deterministic_examples_planned: true
+  example_scope: Positive and negative prices, OHLC conflicts, missing volume, duplicate rows, conflicting rows, corrections, weekends, currencies, and coverage.
