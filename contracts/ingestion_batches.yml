@@ -1,0 +1,218 @@
+contract_version: 1.0.0
+dataset: ingestion_batches
+dataset_class: operational_audit
+description: One immutable audit record for every attempt to retrieve or process one dataset and request window.
+grain: One row represents one attempt to ingest or derive one named dataset from one source for one request window.
+
+primary_key:
+  - batch_id
+
+fields:
+  - name: batch_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: dataset_name
+    type: STRING
+    nullable: false
+    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS]
+  - name: source_id
+    type: STRING
+    nullable: false
+    allowed_values: [YAHOO_FINANCE, EXCHANGE_CALENDARS, MARKET_RISK_DERIVATION]
+  - name: batch_type
+    type: STRING
+    nullable: false
+    allowed_values: [BACKFILL, INCREMENTAL, RETRY, REPROCESS]
+  - name: trigger_type
+    type: STRING
+    nullable: false
+    allowed_values: [MANUAL, SCHEDULED, RECOVERY]
+  - name: retry_of_batch_id
+    type: STRING
+    nullable: true
+    references: ingestion_batches.batch_id
+  - name: attempt_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: requested_start_date
+    type: DATE
+    nullable: false
+    description: Inclusive source request start.
+  - name: requested_end_date
+    type: DATE
+    nullable: false
+    description: Exclusive source request end.
+  - name: started_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: completed_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: status
+    type: STRING
+    nullable: false
+    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, PARTIAL, FAILED]
+  - name: received_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: accepted_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: quarantined_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: rejected_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: unchanged_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: deduplicated_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of warning violations; separate from mutually exclusive row outcomes.
+  - name: manifest_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+  - name: error_code
+    type: STRING
+    nullable: true
+  - name: error_message
+    type: STRING
+    nullable: true
+    description: Sanitized diagnostic containing no credentials, tokens, or secret-bearing URLs.
+  - name: contract_version
+    type: STRING
+    nullable: false
+
+count_reconciliation:
+  mutually_exclusive_outcomes:
+    - accepted_count
+    - quarantined_count
+    - rejected_count
+    - unchanged_count
+    - deduplicated_count
+  equation: received_count = accepted_count + quarantined_count + rejected_count + unchanged_count + deduplicated_count
+  warning_count_is_orthogonal: true
+  explanation: A record may be accepted and also generate one or more warnings without becoming a second received record.
+
+status_semantics:
+  PENDING:
+    terminal: false
+    completed_at_utc: must_be_null
+  RUNNING:
+    terminal: false
+    completed_at_utc: must_be_null
+  SUCCEEDED:
+    terminal: true
+    requirements:
+      - Required expected coverage is complete.
+      - quarantined_count and rejected_count are zero.
+      - warning_count is zero.
+  SUCCEEDED_WITH_WARNINGS:
+    terminal: true
+    requirements:
+      - Required expected coverage is complete.
+      - quarantined_count and rejected_count are zero.
+      - warning_count is greater than zero.
+  PARTIAL:
+    terminal: true
+    requirements:
+      - Some usable output exists.
+      - Required expected coverage is incomplete or unresolved required records remain.
+  FAILED:
+    terminal: true
+    requirements:
+      - The attempt produced no trustworthy usable output or encountered a terminal technical failure.
+      - error_code and error_message are populated.
+
+retry_policy:
+  preserve_original_attempt: true
+  create_new_batch_id: true
+  required_batch_type: RETRY
+  retry_of_batch_id_required: true
+  attempt_number_rule: One greater than the prior attempt in the retry chain.
+  prohibit_overwrite: true
+
+quality_rules:
+  - rule_id: BATCH_ID_UNIQUE
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: batch_id is a non-null unique UUID.
+  - rule_id: BATCH_REQUEST_WINDOW_VALID
+    severity: ERROR
+    disposition: FAIL_BATCH
+    assertion: requested_end_date is after requested_start_date.
+  - rule_id: BATCH_STARTED_TIMESTAMP_REQUIRED
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: started_at_utc is populated for every batch attempt.
+  - rule_id: BATCH_COMPLETION_TIMESTAMP_CONSISTENT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: completed_at_utc is null only for PENDING or RUNNING and is populated for every terminal status.
+  - rule_id: BATCH_COMPLETION_ORDER_VALID
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: completed_at_utc is not earlier than started_at_utc.
+  - rule_id: BATCH_COUNTS_NONNEGATIVE
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: Every count is a whole number greater than or equal to zero.
+  - rule_id: BATCH_COUNT_RECONCILIATION
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: Mutually exclusive row outcomes sum exactly to received_count.
+  - rule_id: BATCH_WARNING_COUNT_ORTHOGONAL
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: warning_count is diagnostic and is not added to received_count reconciliation.
+  - rule_id: BATCH_SUCCESS_STATUS_CONSISTENT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: SUCCEEDED has zero warnings, rejections, and quarantines and complete expected coverage.
+  - rule_id: BATCH_WARNING_STATUS_CONSISTENT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: SUCCEEDED_WITH_WARNINGS has one or more warnings, zero rejections and quarantines, and complete expected coverage.
+  - rule_id: BATCH_PARTIAL_STATUS_CONSISTENT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: PARTIAL identifies incomplete required coverage or unresolved required records while preserving usable output.
+  - rule_id: BATCH_FAILURE_DIAGNOSTIC_REQUIRED
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: FAILED has sanitized non-null error_code and error_message.
+  - rule_id: BATCH_RETRY_LINK_VALID
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: RETRY has a valid prior batch link and the next attempt number; non-retries have null retry_of_batch_id.
+  - rule_id: BATCH_MANIFEST_HASH_FORMAT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: A populated manifest_sha256 is a lowercase 64-character SHA-256 digest.
+  - rule_id: BATCH_DIAGNOSTIC_SECRET_SAFE
+    severity: CRITICAL
+    disposition: FAIL_BATCH_AUDIT
+    assertion: error_message contains no credentials, access tokens, secret values, or secret-bearing URLs.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Batch audit rows are created by runtime attempts rather than static project configuration.
+  deterministic_examples_planned: true
+  example_scope: Clean success, success with accepted warning, partial coverage, terminal failure, retry linkage, count mismatch, and invalid timestamps.
