@@ -392,7 +392,7 @@ request window. A retry never overwrites the original attempt.
 | `requested_end_date` | `DATE` | No | Exclusive source request end |
 | `started_at_utc` | `TIMESTAMP` | No | UTC attempt start |
 | `completed_at_utc` | `TIMESTAMP` | Yes | UTC completion; null while pending/running |
-| `status` | `STRING` | No | `PENDING`, `RUNNING`, `SUCCEEDED`, `PARTIAL`, or `FAILED` |
+| `status` | `STRING` | No | `PENDING`, `RUNNING`, `SUCCEEDED`, `SUCCEEDED_WITH_WARNINGS`, `PARTIAL`, or `FAILED` |
 | `received_count` | `BIGINT` | No | Delivered source records |
 | `accepted_count` | `BIGINT` | No | Records accepted as new/current valid observations |
 | `quarantined_count` | `BIGINT` | No | Records awaiting resolvable context |
@@ -414,8 +414,10 @@ request window. A retry never overwrites the original attempt.
   quarantined, or deduplicated.
 - Requested end must be after requested start.
 - `completed_at_utc` is null only for `PENDING` or `RUNNING`.
-- `SUCCEEDED` requires no quarantined or rejected required records and complete
-  expected-symbol coverage.
+- `SUCCEEDED` requires no quarantined or rejected required records, complete
+  expected-symbol coverage, and zero warnings.
+- `SUCCEEDED_WITH_WARNINGS` requires complete expected-symbol coverage, zero
+  quarantined or rejected records, and at least one warning.
 - Missing one or more expected latest prices makes the batch `PARTIAL`.
 - `RETRY` requires a valid `retry_of_batch_id` and a higher attempt number.
 
