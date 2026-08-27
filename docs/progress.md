@@ -2,17 +2,17 @@
 
 ## Current position
 
-- **Current phase:** Phase 02 — Databricks and SQL Connectivity
-- **Status:** In progress — awaiting final documentation and Git checkpoint
-- **Next gate:** Review and publish the Phase 02 documentation, then record the
-  completion checkpoint and verify a clean synchronized branch
-- **Last updated:** 2026-08-21
+- **Current phase:** Phase 03 — Risk Requirements and Data Contracts
+- **Status:** In progress — implementation and knowledge check complete; awaiting
+  final handoff and Git checkpoint
+- **Next gate:** Publish the Phase 03 handoff, run the final quality gate, and
+  verify a clean synchronized branch
+- **Last updated:** 2026-08-27
 
-Secure OAuth connectivity from Ubuntu, VS Code, and DBeaver has been validated
-against Databricks Free Edition. Identity and catalog checks succeeded independently,
-the learner-owned `workspace.devin_market_risk_dev` schema was intentionally retained
-with zero tables, the SQL warehouse was stopped, and no Phase 03 data-contract or
-ingestion work has begun.
+The risk scope, data-source strategy, 11 logical dataset contracts, deterministic
+reference fixtures, portfolio allocations, stress scenarios, and edge-case examples
+are defined and tested. The learner passed the Phase 03 explain-back. No Databricks
+tables, Bronze ingestion, or live-data retrieval has begun.
 
 ## Status definitions
 
@@ -30,8 +30,8 @@ ingestion work has begun.
 | Phase | Title | Status | Git checkpoint |
 | --- | --- | --- | --- |
 | 01 | Workstation and Repository Foundation | Complete | `bb80972` — foundation |
-| 02 | Databricks and SQL Connectivity | In progress | `21f64ef`, `29fb249`, `632a079` |
-| 03 | Risk Requirements and Data Contracts | Not started | — |
+| 02 | Databricks and SQL Connectivity | Complete | `7207544` — validation record |
+| 03 | Risk Requirements and Data Contracts | In progress | `3588ac3` — latest validated implementation |
 | 04 | Bronze Ingestion | Not started | — |
 | 05 | Silver Quality and Canonical Data | Not started | — |
 | 06 | Gold Analytics Foundation | Not started | — |
@@ -72,12 +72,21 @@ ingestion work has begun.
 | Use `workspace.devin_market_risk_dev` | Provides an explicit learner-owned development namespace |
 | Retain the development schema with zero tables | The governed namespace is useful later without starting ingestion |
 | Stop the SQL warehouse when idle | Respects Free Edition compute constraints |
+| Define risk questions before implementation | Keeps metrics tied to explicit analytical needs |
+| Use 15 US-listed instruments and two portfolios | Provides useful diversification and long-short behavior while remaining explainable |
+| Use deterministic synthetic fixtures first | Makes tests reproducible and avoids licensed-data ambiguity |
+| Preserve immutable Bronze evidence | Supports audit, correction history, and safe reprocessing |
+| Treat warnings separately from row outcomes | Prevents warning violations from double-counting received records |
+| Use exchange-aware trading calendars | Distinguishes expected closures from missing-price failures |
+| Use varied deterministic stress shocks | Produces transparent portfolio sensitivity without unexplained randomness |
+| Label stress scenarios as hypothetical | Prevents assumptions from being mistaken for forecasts or investment advice |
 
-## Open confirmations for Phase 02
+## Open confirmations for Phase 03
 
-- Review and publish the Phase 02 handoff and progress evidence.
-- Record the documentation-only completion checkpoint.
-- Verify a clean synchronized branch before starting Phase 03.
+- Publish the Phase 03 handoff and review sheet.
+- Run the final repository quality gate after all documentation is present.
+- Record and verify the final clean synchronized Git checkpoint.
+- Do not begin Bronze ingestion until Phase 04 starts.
 
 ## Evidence log
 
@@ -113,6 +122,15 @@ Add evidence here only after it is produced on the learner's environment.
 | 2026-08-21 | 02 | Learner-owned development schema | Pass | `workspace.devin_market_risk_dev` was created from Git-backed DDL, ownership/comment were validated, and the schema was deliberately retained with zero tables |
 | 2026-08-21 | 02 | `make check` | Pass | Ruff passed, pytest reported 4 passed, and the environment diagnostic reported 11/11 passed |
 | 2026-08-21 | 02 | Secret and resource hygiene | Pass | Generated `.databricks/` state remained ignored, authentication stayed outside Git, no credential was documented, and the SQL warehouse finished in `STOPPED` state |
+| 2026-08-27 | 03 | Risk requirements and boundaries | Pass | Dashboard questions, metric conventions, freshness behavior, risk assumptions, and MVP non-goals are explicit |
+| 2026-08-27 | 03 | Logical data contracts | Pass | 11 YAML contracts declare dataset grain, keys, fields, nullability, references, valid ranges, and stable quality rules |
+| 2026-08-27 | 03 | Deterministic reference fixtures | Pass | 15 instruments, 2 portfolios, and 30 allocation records reproduce the approved 100% long-only and 130/30 exposures |
+| 2026-08-27 | 03 | Stress-test fixtures | Pass | 3 hypothetical scenarios contain exactly 45 deterministic instrument shocks with complete coverage |
+| 2026-08-27 | 03 | Edge-case examples | Pass | 28 deterministic passing and failing cases cover prices, corporate actions, calendars, positions, batches, retries, and violation resolution |
+| 2026-08-27 | 03 | Contract automation | Pass | 8 contract tests validate YAML structure, references, exposure totals, hashes, scenario coverage, rule IDs, and deterministic examples |
+| 2026-08-27 | 03 | `make check` | Pass | Ruff passed, pytest reported 12 passed, and the environment diagnostic reported 11/11 passed |
+| 2026-08-27 | 03 | Explain-back knowledge check | Pass | Learner explained grain, keys, Bronze preservation, batch statuses, warning counts, trading calendars, exposure, shorts, and stress-test limitations |
+| 2026-08-27 | 03 | Phase boundary | Pass | No Databricks table, Bronze ingestion, live-data retrieval, or licensed dataset was introduced |
 
 ## Handoffs
 
