@@ -3,10 +3,9 @@
 ## Current position
 
 - **Current phase:** Phase 03 — Risk Requirements and Data Contracts
-- **Status:** In progress — implementation and knowledge check complete; awaiting
-  final handoff and Git checkpoint
-- **Next gate:** Publish the Phase 03 handoff, run the final quality gate, and
-  verify a clean synchronized branch
+- **Status:** Complete
+- **Next gate:** Start Phase 04 in a separate chat after verifying the final Phase 03
+  completion commit and clean synchronized branch
 - **Last updated:** 2026-08-27
 
 The risk scope, data-source strategy, 11 logical dataset contracts, deterministic
@@ -31,7 +30,7 @@ tables, Bronze ingestion, or live-data retrieval has begun.
 | --- | --- | --- | --- |
 | 01 | Workstation and Repository Foundation | Complete | `bb80972` — foundation |
 | 02 | Databricks and SQL Connectivity | Complete | `7207544` — validation record |
-| 03 | Risk Requirements and Data Contracts | In progress | `3588ac3` — latest validated implementation |
+| 03 | Risk Requirements and Data Contracts | Complete | `0f65701` — completed handoff |
 | 04 | Bronze Ingestion | Not started | — |
 | 05 | Silver Quality and Canonical Data | Not started | — |
 | 06 | Gold Analytics Foundation | Not started | — |
@@ -81,12 +80,11 @@ tables, Bronze ingestion, or live-data retrieval has begun.
 | Use varied deterministic stress shocks | Produces transparent portfolio sensitivity without unexplained randomness |
 | Label stress scenarios as hypothetical | Prevents assumptions from being mistaken for forecasts or investment advice |
 
-## Open confirmations for Phase 03
+## Open confirmations for Phase 04
 
-- Publish the Phase 03 handoff and review sheet.
-- Run the final repository quality gate after all documentation is present.
-- Record and verify the final clean synchronized Git checkpoint.
-- Do not begin Bronze ingestion until Phase 04 starts.
+- Verify the final Phase 03 completion commit and clean synchronized branch.
+- Start Bronze ingestion only in the dedicated Phase 04 chat.
+- Do not begin Silver cleaning or claim live-data ingestion.
 
 ## Evidence log
 
@@ -139,6 +137,8 @@ Completed phase handoffs belong in `docs/handoffs/` and use
 
 - `docs/handoffs/phase-02-handoff.md` — Phase 02 validation, decisions,
   glossary, knowledge check, and next-phase readiness
+- `docs/handoffs/phase-03-handoff.md` — Phase 03 requirements, contracts,
+  evidence, glossary, knowledge check, and Phase 04 readiness
 
 ## New-chat kickoff prompt
 
