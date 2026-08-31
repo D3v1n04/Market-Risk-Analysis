@@ -14,19 +14,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_DIR = PROJECT_ROOT / "contracts"
 FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
-EXPECTED_CONTRACTS = {
-    "corporate_actions",
-    "daily_prices",
-    "data_quality_violations",
-    "ingestion_batches",
-    "instruments",
-    "portfolios",
-    "positions",
-    "stress_scenario_shocks",
-    "stress_scenarios",
-    "target_allocations",
-    "trading_calendar",
+EXPECTED_CONTRACT_VERSIONS = {
+    "corporate_actions": "1.0.0",
+    "daily_prices": "1.0.0",
+    "data_quality_violations": "1.0.0",
+    "ingestion_batches": "1.1.0",
+    "instruments": "1.0.0",
+    "portfolios": "1.0.0",
+    "positions": "1.0.0",
+    "stress_scenario_shocks": "1.0.0",
+    "stress_scenarios": "1.0.0",
+    "target_allocations": "1.0.0",
+    "trading_calendar": "1.0.0",
 }
+
+EXPECTED_CONTRACTS = set(EXPECTED_CONTRACT_VERSIONS)
 
 
 def _load_contract(dataset: str) -> dict[str, Any]:
@@ -77,7 +79,7 @@ def test_expected_contracts_are_parseable_and_self_describing() -> None:
 
     for path in paths:
         contract = _load_contract(path.stem)
-        assert contract["contract_version"] == "1.0.0"
+        assert contract["contract_version"] == EXPECTED_CONTRACT_VERSIONS[path.stem]
         assert contract["dataset"] == path.stem
         assert contract["grain"].strip()
 
@@ -92,6 +94,37 @@ def test_expected_contracts_are_parseable_and_self_describing() -> None:
         rule_ids = [rule["rule_id"] for rule in contract["quality_rules"]]
         assert rule_ids
         assert len(rule_ids) == len(set(rule_ids))
+
+
+def test_ingestion_batch_contract_supports_git_fixture_reruns() -> None:
+    contract = _load_contract("ingestion_batches")
+    fields = {field["name"]: field for field in contract["fields"]}
+    rule_ids = {rule["rule_id"] for rule in contract["quality_rules"]}
+
+    assert "PORTFOLIOS" in fields["dataset_name"]["allowed_values"]
+    assert "PROJECT_GIT_FIXTURE" in fields["source_id"]["allowed_values"]
+    assert "SKIPPED_DUPLICATE" in fields["status"]["allowed_values"]
+
+    assert fields["requested_start_date"]["nullable"] is True
+    assert fields["requested_end_date"]["nullable"] is True
+
+    assert {
+        "source_object_path",
+        "source_sha256",
+        "duplicate_of_batch_id",
+    } <= fields.keys()
+
+    assert {
+        "BATCH_REQUEST_WINDOW_PAIR_VALID",
+        "BATCH_REQUEST_WINDOW_SOURCE_CONSISTENT",
+        "BATCH_GIT_FIXTURE_LINEAGE_REQUIRED",
+        "BATCH_DUPLICATE_LINK_VALID",
+        "BATCH_DUPLICATE_STATUS_CONSISTENT",
+        "BATCH_ATTEMPT_LINKS_EXCLUSIVE",
+    } <= rule_ids
+
+    duplicate_semantics = contract["status_semantics"]["SKIPPED_DUPLICATE"]
+    assert duplicate_semantics["terminal"] is True
 
 
 def test_declared_fixture_paths_exist() -> None:

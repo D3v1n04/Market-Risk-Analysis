@@ -1,8 +1,8 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: ingestion_batches
 dataset_class: operational_audit
-description: One immutable audit record for every attempt to retrieve or process one dataset and request window.
-grain: One row represents one attempt to ingest or derive one named dataset from one source for one request window.
+description: One immutable audit record for every attempt to ingest or process one named dataset from one source.
+grain: One row represents one attempt to ingest or derive one named dataset from one source.
 
 primary_key:
   - batch_id
@@ -15,11 +15,11 @@ fields:
   - name: dataset_name
     type: STRING
     nullable: false
-    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS]
+    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS, PORTFOLIOS]
   - name: source_id
     type: STRING
     nullable: false
-    allowed_values: [YAHOO_FINANCE, EXCHANGE_CALENDARS, MARKET_RISK_DERIVATION]
+    allowed_values: [YAHOO_FINANCE, EXCHANGE_CALENDARS, MARKET_RISK_DERIVATION, PROJECT_GIT_FIXTURE]
   - name: batch_type
     type: STRING
     nullable: false
@@ -38,11 +38,11 @@ fields:
     minimum_inclusive: 1
   - name: requested_start_date
     type: DATE
-    nullable: false
+    nullable: true
     description: Inclusive source request start.
   - name: requested_end_date
     type: DATE
-    nullable: false
+    nullable: true
     description: Exclusive source request end.
   - name: started_at_utc
     type: TIMESTAMP
@@ -55,7 +55,7 @@ fields:
   - name: status
     type: STRING
     nullable: false
-    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, PARTIAL, FAILED]
+    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, PARTIAL, FAILED, SKIPPED_DUPLICATE]
   - name: received_count
     type: BIGINT
     nullable: false
@@ -99,6 +99,20 @@ fields:
   - name: contract_version
     type: STRING
     nullable: false
+  - name: source_object_path
+    type: STRING
+    nullable: true
+    description: Repository-relative path or external object identifier for the ingested source.
+  - name: source_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+    description: SHA-256 digest of the exact source object bytes.
+  - name: duplicate_of_batch_id
+    type: STRING
+    nullable: true
+    references: ingestion_batches.batch_id
+    description: Earlier successful batch containing the identical dataset and source content.
 
 count_reconciliation:
   mutually_exclusive_outcomes:
@@ -140,6 +154,12 @@ status_semantics:
     requirements:
       - The attempt produced no trustworthy usable output or encountered a terminal technical failure.
       - error_code and error_message are populated.
+  SKIPPED_DUPLICATE:
+    terminal: true
+    requirements:
+      - No new Bronze rows are written.
+      - deduplicated_count is greater than zero.
+      - duplicate_of_batch_id identifies the earlier successful batch.
 
 retry_policy:
   preserve_original_attempt: true
@@ -154,10 +174,14 @@ quality_rules:
     severity: ERROR
     disposition: FAIL_BATCH_AUDIT
     assertion: batch_id is a non-null unique UUID.
-  - rule_id: BATCH_REQUEST_WINDOW_VALID
+  - rule_id: BATCH_REQUEST_WINDOW_PAIR_VALID
     severity: ERROR
     disposition: FAIL_BATCH
-    assertion: requested_end_date is after requested_start_date.
+    assertion: requested_start_date and requested_end_date are both null or both populated; when populated, requested_end_date is after requested_start_date.
+  - rule_id: BATCH_REQUEST_WINDOW_SOURCE_CONSISTENT
+    severity: ERROR
+    disposition: FAIL_BATCH
+    assertion: PROJECT_GIT_FIXTURE has null request dates; YAHOO_FINANCE and EXCHANGE_CALENDARS have populated request dates.
   - rule_id: BATCH_STARTED_TIMESTAMP_REQUIRED
     severity: ERROR
     disposition: FAIL_BATCH_AUDIT
@@ -210,9 +234,29 @@ quality_rules:
     severity: CRITICAL
     disposition: FAIL_BATCH_AUDIT
     assertion: error_message contains no credentials, access tokens, secret values, or secret-bearing URLs.
+  - rule_id: BATCH_SOURCE_HASH_FORMAT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: A populated source_sha256 is a lowercase 64-character SHA-256 digest.
+  - rule_id: BATCH_GIT_FIXTURE_LINEAGE_REQUIRED
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: PROJECT_GIT_FIXTURE has non-null source_object_path and source_sha256.
+  - rule_id: BATCH_DUPLICATE_LINK_VALID
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: SKIPPED_DUPLICATE references an earlier successful batch with the same dataset_name, source_id, and source_sha256; all other statuses have null duplicate_of_batch_id.
+  - rule_id: BATCH_DUPLICATE_STATUS_CONSISTENT
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: SKIPPED_DUPLICATE writes no new Bronze rows, has accepted_count equal to zero, has deduplicated_count greater than zero, and has zero quarantined_count and rejected_count.
+  - rule_id: BATCH_ATTEMPT_LINKS_EXCLUSIVE
+    severity: ERROR
+    disposition: FAIL_BATCH_AUDIT
+    assertion: retry_of_batch_id and duplicate_of_batch_id cannot both be populated for the same batch.
 
 fixture_policy:
   canonical_fixture: null
   reason: Batch audit rows are created by runtime attempts rather than static project configuration.
   deterministic_examples_planned: true
-  example_scope: Clean success, success with accepted warning, partial coverage, terminal failure, retry linkage, count mismatch, and invalid timestamps.
+  example_scope: Clean success, duplicate skip, Git fixture lineage, success with accepted warning, partial coverage, terminal failure, retry linkage, count mismatch, invalid request windows, and invalid timestamps.
