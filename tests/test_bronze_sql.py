@@ -9,6 +9,10 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DDL_PATH = PROJECT_ROOT / "sql" / "bronze" / "phase_04_create_bronze_tables.sql"
 CONTRACT_DIR = PROJECT_ROOT / "contracts"
+VOLUME_DDL_PATH = (
+    PROJECT_ROOT / "sql" / "bronze" / "phase_04_create_bronze_volume.sql"
+)
+VOLUME_NAME = "workspace.devin_market_risk_dev.bronze_landing"
 
 PORTFOLIO_TABLE = "workspace.devin_market_risk_dev.bronze_portfolios"
 BATCH_TABLE = "workspace.devin_market_risk_dev.bronze_ingestion_batches"
@@ -79,3 +83,12 @@ def test_bronze_batch_columns_match_ingestion_contract() -> None:
     }
 
     assert columns == expected_columns
+
+
+def test_bronze_landing_uses_managed_unity_catalog_volume() -> None:
+    ddl = VOLUME_DDL_PATH.read_text(encoding="utf-8")
+    normalized_ddl = " ".join(ddl.upper().split())
+
+    assert f"CREATE VOLUME IF NOT EXISTS {VOLUME_NAME}".upper() in normalized_ddl
+    assert "CREATE EXTERNAL VOLUME" not in normalized_ddl
+    assert re.search(r"\bLOCATION\s+'", normalized_ddl) is None
