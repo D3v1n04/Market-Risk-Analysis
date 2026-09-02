@@ -13,6 +13,12 @@ VOLUME_DDL_PATH = (
     PROJECT_ROOT / "sql" / "bronze" / "phase_04_create_bronze_volume.sql"
 )
 VOLUME_NAME = "workspace.devin_market_risk_dev.bronze_landing"
+VERIFICATION_SQL_PATH = (
+    PROJECT_ROOT
+    / "sql"
+    / "bronze"
+    / "phase_04_verify_bronze_tables.sql"
+)
 
 PORTFOLIO_TABLE = "workspace.devin_market_risk_dev.bronze_portfolios"
 BATCH_TABLE = "workspace.devin_market_risk_dev.bronze_ingestion_batches"
@@ -92,3 +98,32 @@ def test_bronze_landing_uses_managed_unity_catalog_volume() -> None:
     assert f"CREATE VOLUME IF NOT EXISTS {VOLUME_NAME}".upper() in normalized_ddl
     assert "CREATE EXTERNAL VOLUME" not in normalized_ddl
     assert re.search(r"\bLOCATION\s+'", normalized_ddl) is None
+
+
+def test_bronze_verification_covers_idempotency_and_lineage() -> None:
+    sql = VERIFICATION_SQL_PATH.read_text(encoding="utf-8")
+    normalized_sql = " ".join(sql.upper().split())
+
+    assert "BRONZE_PORTFOLIOS" in normalized_sql
+    assert "BRONZE_INGESTION_BATCHES" in normalized_sql
+    assert "AS COUNTS_RECONCILE" in normalized_sql
+    assert "DUPLICATE_OF_BATCH_ID" in normalized_sql
+    assert "AS COMPLETION_ORDER_VALID" in normalized_sql
+    assert (
+        "WHEN ACTUAL_INCEPTION_DATE = '' THEN 'EMPTY_STRING'"
+        in normalized_sql
+    )
+
+    required_lineage_columns = {
+        "batch_id",
+        "source_object_path",
+        "source_row_number",
+        "source_sha256",
+        "source_record_sha256",
+        "raw_record",
+        "ingested_at_utc",
+        "contract_version",
+    }
+
+    for column in required_lineage_columns:
+        assert column.upper() in normalized_sql
