@@ -1,0 +1,320 @@
+contract_version: 1.0.0
+dataset: processing_runs
+dataset_class: operational_audit
+description: Immutable audit evidence for every attempt to validate and canonicalize one Bronze ingestion batch into Silver.
+grain: One row represents one attempt to evaluate one Bronze ingestion batch for one dataset.
+
+operation_scope:
+  input_layer: BRONZE
+  output_layer: SILVER
+  source_batches_per_run: 1
+
+primary_key:
+  - processing_run_id
+
+natural_key:
+  - source_batch_id
+  - attempt_number
+
+foreign_keys:
+  - fields: [source_batch_id]
+    references: ingestion_batches.batch_id
+  - fields: [reprocess_of_processing_run_id]
+    references: processing_runs.processing_run_id
+    nullable: true
+
+fields:
+  - name: processing_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: source_batch_id
+    type: STRING
+    nullable: false
+    format: UUID
+    description: Bronze ingestion batch evaluated by this Silver run.
+  - name: dataset_name
+    type: STRING
+    nullable: false
+    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS, PORTFOLIOS]
+  - name: attempt_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: reprocess_of_processing_run_id
+    type: STRING
+    nullable: true
+    format: UUID
+    description: Previous Silver run for the same Bronze batch when this is a reprocessing attempt.
+  - name: trigger_type
+    type: STRING
+    nullable: false
+    allowed_values: [MANUAL, SCHEDULED, RECOVERY]
+  - name: started_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: completed_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: status
+    type: STRING
+    nullable: false
+    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, FAILED]
+  - name: evaluated_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of Bronze records evaluated by this processing run.
+  - name: accepted_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of records accepted as new or corrected canonical candidates.
+  - name: quarantined_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of records withheld pending resolution; zero for the current portfolio policy.
+  - name: rejected_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of records rejected by structural, business, or conflict rules.
+  - name: unchanged_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of valid records already represented by the current canonical version.
+  - name: deduplicated_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of nonwinning identical duplicate records.
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of warning violations; separate from mutually exclusive record outcomes.
+  - name: canonical_before_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of canonical Silver records visible before this run.
+  - name: canonical_after_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of canonical Silver records visible after this run.
+  - name: input_record_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: Deterministic digest of the ordered Bronze record set evaluated by this run.
+  - name: canonical_before_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the canonical Silver snapshot before this run; null when no prior snapshot exists.
+  - name: canonical_after_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the canonical Silver snapshot visible after this run.
+  - name: published
+    type: BOOLEAN
+    nullable: false
+    description: Whether this run atomically changed the canonical Silver snapshot.
+  - name: published_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: failed_rule_ids
+    type: ARRAY<STRING>
+    nullable: false
+    description: Dataset-level rules that failed; an empty array means no dataset-level rule failed.
+  - name: error_code
+    type: STRING
+    nullable: true
+    description: Machine-readable code for a terminal technical failure.
+  - name: error_message
+    type: STRING
+    nullable: true
+    description: Sanitized diagnostic containing no credentials, tokens, or secret-bearing URLs.
+  - name: dataset_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: Version of the source dataset contract used for Silver validation.
+  - name: code_version
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{7,40}$'
+    description: Git commit SHA identifying the transformation code.
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+attempt_policy:
+  first_attempt:
+    attempt_number: 1
+    reprocess_of_processing_run_id: must_be_null
+  reprocess:
+    source_batch_id: same_as_prior_run
+    attempt_number: one_greater_than_prior_attempt
+    reprocess_of_processing_run_id: required
+  create_new_processing_run_id: true
+  prohibit_overwrite: true
+
+count_reconciliation:
+  mutually_exclusive_outcomes:
+    - accepted_count
+    - quarantined_count
+    - rejected_count
+    - unchanged_count
+    - deduplicated_count
+  equation: evaluated_count = accepted_count + quarantined_count + rejected_count + unchanged_count + deduplicated_count
+  warning_count_is_orthogonal: true
+  explanation: Every evaluated Bronze record receives exactly one row outcome; warning violations describe records and are not additional evaluated records.
+
+publication_policy:
+  mode: ATOMIC
+  publish_allowed_statuses:
+    - SUCCEEDED
+    - SUCCEEDED_WITH_WARNINGS
+  failed_run_publishes: false
+  preserve_last_good_snapshot_on_failure: true
+  no_change_run_may_skip_publication: true
+
+  publication_timestamp:
+    published_true: published_at_utc is required.
+    published_false: published_at_utc must be null.
+
+  failed_snapshot:
+    canonical_after_count: must_equal_canonical_before_count
+    canonical_after_sha256: must_equal_canonical_before_sha256
+
+status_semantics:
+  PENDING:
+    terminal: false
+    completed_at_utc: must_be_null
+    published: false
+  RUNNING:
+    terminal: false
+    completed_at_utc: must_be_null
+    published: false
+  SUCCEEDED:
+    terminal: true
+    completed_at_utc: required
+    requirements:
+      - rejected_count and quarantined_count are zero.
+      - warning_count is zero.
+      - failed_rule_ids is empty.
+  SUCCEEDED_WITH_WARNINGS:
+    terminal: true
+    completed_at_utc: required
+    requirements:
+      - rejected_count and quarantined_count are zero.
+      - warning_count is greater than zero.
+      - failed_rule_ids is empty.
+  FAILED:
+    terminal: true
+    completed_at_utc: required
+    published: false
+    requirements:
+      - A dataset-level rule failed, a record was rejected or quarantined, or a terminal technical failure occurred.
+      - The canonical before and after evidence is identical.
+      - Failure evidence is populated.
+
+quality_rules:
+  - rule_id: PROCESSING_RUN_ID_UNIQUE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: processing_run_id is a non-null unique UUID.
+
+  - rule_id: PROCESSING_RUN_SOURCE_BATCH_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: source_batch_id identifies an existing Bronze ingestion batch for the same dataset.
+
+  - rule_id: PROCESSING_RUN_ATTEMPT_CHAIN_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: The first attempt has no prior-run link; each reprocessing attempt links to the prior run for the same source batch and increments attempt_number.
+
+  - rule_id: PROCESSING_RUN_COMPLETION_TIMESTAMP_CONSISTENT
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: completed_at_utc is null for nonterminal statuses and populated for terminal statuses.
+
+  - rule_id: PROCESSING_RUN_COMPLETION_ORDER_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: completed_at_utc is not earlier than started_at_utc.
+
+  - rule_id: PROCESSING_RUN_CODE_VERSION_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: code_version contains a lowercase 7-to-40-character Git commit SHA.
+
+  - rule_id: PROCESSING_RUN_COUNTS_NONNEGATIVE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Every processing-run count is a whole number greater than or equal to zero.
+
+  - rule_id: PROCESSING_RUN_COUNT_RECONCILIATION
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Mutually exclusive record outcomes sum exactly to evaluated_count.
+
+  - rule_id: PROCESSING_RUN_WARNING_COUNT_ORTHOGONAL
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: warning_count records warning violations and is not added to evaluated_count reconciliation.
+
+  - rule_id: PROCESSING_RUN_INPUT_HASH_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: input_record_set_sha256 is a lowercase 64-character SHA-256 digest.
+
+  - rule_id: PROCESSING_RUN_SNAPSHOT_HASH_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Populated canonical snapshot hashes are lowercase 64-character SHA-256 digests.
+
+  - rule_id: PROCESSING_RUN_ATOMIC_PUBLICATION
+    scope: AUDIT_RECORD
+    severity: CRITICAL
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: A failed run never publishes and its canonical before and after evidence is identical.
+
+  - rule_id: PROCESSING_RUN_PUBLICATION_TIMESTAMP_CONSISTENT
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: published_at_utc is populated only when published is true.
+
+  - rule_id: PROCESSING_RUN_FAILURE_EVIDENCE_REQUIRED
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: A failed run identifies failed dataset rules, rejected or quarantined records, or sanitized technical failure diagnostics.
+
+  - rule_id: PROCESSING_RUN_DIAGNOSTIC_SECRET_SAFE
+    scope: AUDIT_RECORD
+    severity: CRITICAL
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: error_message contains no credentials, access tokens, secret values, or secret-bearing URLs.

@@ -1,8 +1,13 @@
-contract_version: 1.1.0
+contract_version: 1.2.0
 dataset: ingestion_batches
 dataset_class: operational_audit
-description: One immutable audit record for every attempt to ingest or process one named dataset from one source.
-grain: One row represents one attempt to ingest or derive one named dataset from one source.
+description: One immutable audit record for every attempt to ingest one named dataset from one source into Bronze.
+grain: One row represents one attempt to ingest one named source dataset into Bronze.
+
+operation_scope:
+  input_layer: SOURCE
+  output_layer: BRONZE
+  includes_silver_processing: false
 
 primary_key:
   - batch_id
@@ -64,6 +69,7 @@ fields:
     type: BIGINT
     nullable: false
     minimum_inclusive: 0
+    description: Number of source records successfully written to Bronze; this does not indicate Silver business-rule acceptance.
   - name: quarantined_count
     type: BIGINT
     nullable: false

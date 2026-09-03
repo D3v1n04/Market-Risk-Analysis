@@ -1,0 +1,204 @@
+contract_version: 1.0.0
+dataset: portfolio_record_outcomes
+dataset_class: operational_audit
+description: Immutable final outcome assigned to every Bronze portfolio record evaluated by a Silver processing run.
+grain: One row represents one Bronze portfolio record evaluated in one Silver processing run.
+
+operation_scope:
+  input_layer: BRONZE
+  output_layer: SILVER_AUDIT
+  dataset_name: PORTFOLIOS
+
+primary_key:
+  - outcome_id
+
+natural_key:
+  - processing_run_id
+  - source_record_id
+
+foreign_keys:
+  - fields: [processing_run_id]
+    references: processing_runs.processing_run_id
+  - fields: [batch_id]
+    references: ingestion_batches.batch_id
+
+fields:
+  - name: outcome_id
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: processing_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: batch_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: dataset_name
+    type: STRING
+    nullable: false
+    allowed_values: [PORTFOLIOS]
+  - name: source_record_id
+    type: STRING
+    nullable: false
+    description: Deterministic batch_id:source_row_number identifier for the evaluated Bronze row.
+  - name: source_row_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: source_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: portfolio_id
+    type: STRING
+    nullable: true
+    format: '^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$'
+    description: Nullable because a malformed source record may be rejected without a valid portfolio identifier.
+  - name: outcome
+    type: STRING
+    nullable: false
+    allowed_values: [ACCEPTED_NEW, ACCEPTED_CORRECTION, UNCHANGED, DEDUPLICATED, QUARANTINED, REJECTED]
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of warning violations attached to this evaluated record.
+  - name: violation_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Total warning, error, and critical violations attached to this evaluated record.
+  - name: canonical_record_hash
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+    description: Canonical business-record hash when the outcome is accepted or unchanged.
+  - name: deduplicated_to_source_record_id
+    type: STRING
+    nullable: true
+    description: Winning source record within the same run when this row is an identical duplicate.
+  - name: evaluated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: dataset_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+source_record_id_derivation:
+  delimiter: ':'
+  fields: [batch_id, source_row_number]
+  format: '{batch_id}:{source_row_number}'
+
+outcome_id_derivation:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  fields: [processing_run_id, source_record_id]
+  output: Lowercase 64-character hexadecimal digest.
+
+outcome_semantics:
+  ACCEPTED_NEW:
+    processing_run_count: accepted_count
+    canonical_candidate: true
+    canonical_record_hash: required
+  ACCEPTED_CORRECTION:
+    processing_run_count: accepted_count
+    canonical_candidate: true
+    canonical_record_hash: required
+  UNCHANGED:
+    processing_run_count: unchanged_count
+    canonical_candidate: false
+    canonical_record_hash: required
+  DEDUPLICATED:
+    processing_run_count: deduplicated_count
+    canonical_candidate: false
+    deduplicated_to_source_record_id: required
+  QUARANTINED:
+    processing_run_count: quarantined_count
+    canonical_candidate: false
+  REJECTED:
+    processing_run_count: rejected_count
+    canonical_candidate: false
+
+outcome_precedence:
+  - REJECTED
+  - QUARANTINED
+  - DEDUPLICATED
+  - UNCHANGED
+  - ACCEPTED_CORRECTION
+  - ACCEPTED_NEW
+
+warning_policy:
+  orthogonal_to_outcome: true
+  warning_count_may_be_positive_for:
+    - ACCEPTED_NEW
+    - ACCEPTED_CORRECTION
+    - UNCHANGED
+    - DEDUPLICATED
+    - QUARANTINED
+    - REJECTED
+  warning_count_must_not_create_an_additional_outcome: true
+  warning_count_must_not_exceed_violation_count: true
+
+deduplication_policy:
+  winner: lowest_source_row_number
+  nonwinner_outcome: DEDUPLICATED
+  winner_reference_required: true
+  winner_must_share_processing_run_id: true
+
+quality_rules:
+  - rule_id: PORTFOLIO_OUTCOME_PRECEDENCE_DETERMINISTIC
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: When several rules apply, the highest-priority applicable outcome is assigned once while all warning and error violations remain recorded.
+
+  - rule_id: PORTFOLIO_OUTCOME_ID_UNIQUE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: outcome_id is the unique deterministic digest of processing_run_id and source_record_id.
+
+  - rule_id: PORTFOLIO_OUTCOME_SOURCE_TRACEABLE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: The processing run, Bronze batch, source row number, and source record hash are populated and mutually consistent.
+
+  - rule_id: PORTFOLIO_OUTCOME_STATE_ALLOWED
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Every evaluated record receives exactly one allowed final outcome.
+
+  - rule_id: PORTFOLIO_OUTCOME_COUNTS_NONNEGATIVE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: warning_count and violation_count are whole numbers greater than or equal to zero.
+
+  - rule_id: PORTFOLIO_OUTCOME_WARNING_COUNT_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: warning_count does not exceed violation_count and does not change the final row outcome.
+
+  - rule_id: PORTFOLIO_OUTCOME_CANONICAL_HASH_CONSISTENT
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Accepted and unchanged outcomes contain a valid canonical_record_hash.
+
+  - rule_id: PORTFOLIO_OUTCOME_DEDUPLICATION_LINK_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: A deduplicated row identifies the lowest-row-number winning source record from the same processing run.

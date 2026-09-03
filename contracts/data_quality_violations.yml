@@ -1,18 +1,20 @@
-contract_version: 1.0.0
+contract_version: 1.2.0
 dataset: data_quality_violations
 dataset_class: operational_audit
 description: Immutable evidence of each warning, quarantine, or rejection raised for a delivered source record.
-grain: One row represents one data-quality rule violation for one delivered source record in one batch.
+grain: One row represents one data-quality rule violation for one delivered source record evaluated in one Silver processing run.
 
 primary_key:
   - violation_id
 
 natural_key:
-  - batch_id
+  - processing_run_id
   - source_record_id
   - rule_id
 
 foreign_keys:
+  - fields: [processing_run_id]
+    references: processing_runs.processing_run_id
   - fields: [batch_id]
     references: ingestion_batches.batch_id
   - fields: [resolution_batch_id]
@@ -23,30 +25,49 @@ fields:
   - name: violation_id
     type: STRING
     nullable: false
-    description: Deterministic identifier for the batch, source record, and rule combination.
+    description: Deterministic identifier for the processing run, source record, and rule combination.
+  - name: processing_run_id
+    type: STRING
+    nullable: false
+    description: Silver processing run that evaluated the source record.
   - name: batch_id
     type: STRING
     nullable: false
   - name: dataset_name
     type: STRING
     nullable: false
-    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS]
+    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS, PORTFOLIOS]
   - name: source_record_id
     type: STRING
     nullable: false
-    description: Delivered record that triggered the rule.
+    description: Deterministic batch_id:source_row_number identifier for the delivered Bronze record.
+  - name: source_row_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+    description: Original row number within the delivered Bronze source.
+  - name: source_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: SHA-256 digest proving which raw Bronze record was evaluated.
   - name: rule_id
     type: STRING
     nullable: false
     description: Stable machine-readable rule identifier from the applicable contract.
+  - name: rule_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: Version of the dataset contract containing the evaluated rule.
   - name: severity
     type: STRING
     nullable: false
-    allowed_values: [LOW, MEDIUM, HIGH, CRITICAL]
+    allowed_values: [WARNING, ERROR, CRITICAL]
   - name: disposition
     type: STRING
     nullable: false
-    allowed_values: [WARN, QUARANTINE, REJECT]
+    allowed_values: [WARN_AND_ACCEPT, WARN_AND_DEDUPLICATE, QUARANTINE, REJECT]
   - name: affected_field
     type: STRING
     nullable: true
@@ -89,11 +110,16 @@ fields:
     type: STRING
     nullable: false
 
+source_record_id_derivation:
+  delimiter: ':'
+  fields: [batch_id, source_row_number]
+  format: '{batch_id}:{source_row_number}'
+
 violation_id_derivation:
   algorithm: SHA-256
   encoding: UTF-8
   delimiter: '|'
-  fields: [batch_id, source_record_id, rule_id]
+  fields: [processing_run_id, source_record_id, rule_id]
   output: Lowercase 64-character hexadecimal digest.
 
 resolution_semantics:
@@ -143,7 +169,7 @@ quality_rules:
   - rule_id: VIOLATION_DISPOSITION_ALLOWED
     severity: ERROR
     disposition: FAIL_AUDIT_RECORD
-    assertion: disposition is WARN, QUARANTINE, or REJECT.
+    assertion: disposition is WARN_AND_ACCEPT, WARN_AND_DEDUPLICATE, QUARANTINE, or REJECT.
   - rule_id: VIOLATION_REQUIRED_TEXT
     severity: ERROR
     disposition: FAIL_AUDIT_RECORD

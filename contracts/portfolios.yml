@@ -1,4 +1,4 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: portfolios
 dataset_class: git_managed_configuration
 description: Identity, strategy, capital, and exposure targets for the two MVP portfolios.
@@ -15,6 +15,7 @@ fields:
   - name: portfolio_id
     type: STRING
     nullable: false
+    format: '^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$'
     description: Stable project portfolio identifier in uppercase snake case.
   - name: portfolio_name
     type: STRING
@@ -72,6 +73,7 @@ fields:
   - name: config_version
     type: STRING
     nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
   - name: record_hash
     type: STRING
     nullable: false
@@ -100,27 +102,143 @@ record_hash:
     - is_active
     - config_version
 
+canonicalization_policy:
+  business_key:
+    - portfolio_id
+  version_field: config_version
+  version_order: semantic_version
+
+  exact_duplicate:
+    comparison: Same portfolio_id and record_hash within one batch.
+    winner: lowest_source_row_number
+    non_winner_disposition: WARN_AND_DEDUPLICATE
+
+  same_batch_conflict:
+    comparison: Same portfolio_id and different record_hash within one batch.
+    disposition: REJECT
+    arrival_order_winner_allowed: false
+
+  later_batch_unchanged:
+    comparison: Same portfolio_id, config_version, and record_hash in a later batch.
+    disposition: UNCHANGED
+
+  later_batch_correction:
+    comparison: Same portfolio_id with a higher valid semantic config_version.
+    disposition: ACCEPT_CORRECTION
+    requires_higher_version: true
+
+  invalid_correction:
+    comparison: Same portfolio_id with changed values and the same or lower config_version.
+    disposition: REJECT
+
 quality_rules:
+  - rule_id: PORTFOLIO_REQUIRED_FIELDS
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: Every non-nullable field is present and nonempty.
+
+  - rule_id: PORTFOLIO_TYPES_CASTABLE
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: Dates, decimals, and booleans convert to their contracted types without loss; a blank actual_inception_date converts to null.
+
+  - rule_id: PORTFOLIO_ACTUAL_INCEPTION_DATE_MISSING
+    scope: RECORD
+    severity: WARNING
+    disposition: WARN_AND_ACCEPT
+    affected_field: actual_inception_date
+    canonical_value: null
+    assertion: A blank or null actual_inception_date becomes null in Silver, remains accepted, and produces one warning violation.
+
+  - rule_id: PORTFOLIO_ALLOWED_VALUES
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: Strategy, currency, rebalance policy, and cash policy match their contracted allowed values.
+
+  - rule_id: PORTFOLIO_ID_FORMAT
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: portfolio_id matches the documented uppercase snake-case format.
+
+  - rule_id: PORTFOLIO_CONFIG_VERSION_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: config_version contains a valid three-part numeric semantic version.
+
   - rule_id: PORTFOLIO_ACTIVE_COUNT
+    scope: DATASET
     severity: ERROR
-    assertion: Contract version 1.0.0 contains exactly two active portfolios.
+    disposition: FAIL_PROCESSING_RUN
+    assertion: After validation and canonicalization, the published snapshot contains exactly two active portfolios.
+
   - rule_id: PORTFOLIO_ID_UNIQUE
+    scope: DATASET
     severity: ERROR
-    assertion: portfolio_id is non-null and unique.
+    disposition: FAIL_PROCESSING_RUN
+    assertion: After deterministic deduplication, portfolio_id is non-null and unique in the canonical dataset.
+
   - rule_id: PORTFOLIO_INITIAL_NAV_POSITIVE
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: initial_nav is greater than zero.
+
   - rule_id: PORTFOLIO_RATIO_RECONCILIATION
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     tolerance: '0.000001'
     assertion: Gross equals long plus short, and net equals long minus short.
+
   - rule_id: PORTFOLIO_STRATEGY_TARGETS
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: LONG_ONLY uses 1.0/0.0/1.0/1.0 and LONG_SHORT_130_30 uses 1.3/0.3/1.6/1.0.
+
   - rule_id: PORTFOLIO_INCEPTION_ORDER
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: actual_inception_date is null or on or after target_inception_date.
+
   - rule_id: PORTFOLIO_RECORD_HASH_VALID
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: record_hash matches the canonical SHA-256 calculation.
 
+  - rule_id: PORTFOLIO_SAME_BATCH_IDENTICAL_DUPLICATE
+    scope: BUSINESS_KEY
+    severity: WARNING
+    disposition: WARN_AND_DEDUPLICATE
+    assertion: Identical same-key and same-hash rows in one batch produce one canonical candidate, with the lowest source_row_number winning.
+
+  - rule_id: PORTFOLIO_SAME_BATCH_CONFLICT
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: REJECT
+    assertion: Differing same-key candidates in one batch are rejected rather than resolved using arrival or row order.
+
+  - rule_id: PORTFOLIO_LATER_BATCH_UNCHANGED
+    scope: BUSINESS_KEY
+    severity: INFO
+    disposition: UNCHANGED
+    assertion: A later record with the same key, config_version, and record_hash does not create a new canonical version.
+
+  - rule_id: PORTFOLIO_LATER_BATCH_CORRECTION
+    scope: BUSINESS_KEY
+    severity: INFO
+    disposition: ACCEPT_CORRECTION
+    assertion: A valid later record with a higher semantic config_version may replace the current canonical version while preserving lineage.
+
+  - rule_id: PORTFOLIO_INVALID_CORRECTION
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: REJECT
+    assertion: Changed values with the same or a lower config_version never replace the current canonical record.

@@ -17,11 +17,13 @@ FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 EXPECTED_CONTRACT_VERSIONS = {
     "corporate_actions": "1.0.0",
     "daily_prices": "1.0.0",
-    "data_quality_violations": "1.0.0",
-    "ingestion_batches": "1.1.0",
+    "data_quality_violations": "1.2.0",
+    "ingestion_batches": "1.2.0",
     "instruments": "1.0.0",
-    "portfolios": "1.0.0",
+    "portfolios": "1.1.0",
+    "portfolio_record_outcomes": "1.0.0",
     "positions": "1.0.0",
+    "processing_runs": "1.0.0",
     "stress_scenario_shocks": "1.0.0",
     "stress_scenarios": "1.0.0",
     "target_allocations": "1.0.0",
@@ -127,6 +129,16 @@ def test_ingestion_batch_contract_supports_git_fixture_reruns() -> None:
     assert duplicate_semantics["terminal"] is True
 
 
+def test_ingestion_batch_contract_is_bronze_only() -> None:
+    contract = _load_contract("ingestion_batches")
+    scope = contract["operation_scope"]
+
+    assert scope["input_layer"] == "SOURCE"
+    assert scope["output_layer"] == "BRONZE"
+    assert scope["includes_silver_processing"] is False
+    assert contract["contract_version"] == "1.2.0"
+
+
 def test_declared_fixture_paths_exist() -> None:
     for dataset in EXPECTED_CONTRACTS:
         contract = _load_contract(dataset)
@@ -182,6 +194,50 @@ def test_portfolio_fixture_reconciles_strategy_targets_and_hashes() -> None:
     _assert_record_hashes(rows, contract)
 
 
+def test_portfolio_contract_declares_deterministic_silver_policy() -> None:
+    contract = _load_contract("portfolios")
+    policy = contract["canonicalization_policy"]
+
+    assert policy["business_key"] == ["portfolio_id"]
+    assert policy["version_field"] == "config_version"
+    assert policy["version_order"] == "semantic_version"
+
+    assert (
+        policy["exact_duplicate"]["winner"]
+        == "lowest_source_row_number"
+    )
+    assert (
+        policy["same_batch_conflict"]["arrival_order_winner_allowed"]
+        is False
+    )
+    assert (
+        policy["later_batch_correction"]["requires_higher_version"]
+        is True
+    )
+
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+    expected_rules = {
+        "PORTFOLIO_SAME_BATCH_IDENTICAL_DUPLICATE": (
+            "WARNING",
+            "WARN_AND_DEDUPLICATE",
+        ),
+        "PORTFOLIO_SAME_BATCH_CONFLICT": ("ERROR", "REJECT"),
+        "PORTFOLIO_LATER_BATCH_UNCHANGED": ("INFO", "UNCHANGED"),
+        "PORTFOLIO_LATER_BATCH_CORRECTION": (
+            "INFO",
+            "ACCEPT_CORRECTION",
+        ),
+        "PORTFOLIO_INVALID_CORRECTION": ("ERROR", "REJECT"),
+    }
+
+    for rule_id, expected in expected_rules.items():
+        rule = rules[rule_id]
+        assert (rule["severity"], rule["disposition"]) == expected
+
+
 def test_allocations_cover_both_portfolios_and_reconcile_exposure() -> None:
     contract = _load_contract("target_allocations")
     rows = _load_fixture("target_allocations.csv")
@@ -222,6 +278,158 @@ def test_allocations_cover_both_portfolios_and_reconcile_exposure() -> None:
     } == {"WMT_US", "UNH_US", "TSLA_US"}
 
     _assert_record_hashes(rows, contract)
+
+
+def test_portfolio_contract_warns_on_missing_actual_inception_date() -> None:
+    contract = _load_contract("portfolios")
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    rule = rules["PORTFOLIO_ACTUAL_INCEPTION_DATE_MISSING"]
+
+    assert rule["scope"] == "RECORD"
+    assert rule["severity"] == "WARNING"
+    assert rule["disposition"] == "WARN_AND_ACCEPT"
+    assert rule["affected_field"] == "actual_inception_date"
+    assert rule["canonical_value"] is None
+
+
+def test_portfolio_record_outcome_contract_assigns_one_final_state() -> None:
+    contract = _load_contract("portfolio_record_outcomes")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    assert contract["contract_version"] == "1.0.0"
+    assert contract["dataset_class"] == "operational_audit"
+    assert contract["primary_key"] == ["outcome_id"]
+    assert contract["natural_key"] == [
+        "processing_run_id",
+        "source_record_id",
+    ]
+
+    expected_fields = {
+        "outcome_id": ("STRING", False),
+        "processing_run_id": ("STRING", False),
+        "batch_id": ("STRING", False),
+        "source_record_id": ("STRING", False),
+        "source_row_number": ("BIGINT", False),
+        "source_record_sha256": ("STRING", False),
+        "portfolio_id": ("STRING", True),
+        "outcome": ("STRING", False),
+        "warning_count": ("BIGINT", False),
+        "violation_count": ("BIGINT", False),
+        "canonical_record_hash": ("STRING", True),
+        "deduplicated_to_source_record_id": ("STRING", True),
+        "evaluated_at_utc": ("TIMESTAMP", False),
+        "dataset_contract_version": ("STRING", False),
+        "contract_version": ("STRING", False),
+    }
+
+    for field_name, expected in expected_fields.items():
+        field = fields[field_name]
+        assert (field["type"], field["nullable"]) == expected
+
+    assert fields["outcome"]["allowed_values"] == [
+        "ACCEPTED_NEW",
+        "ACCEPTED_CORRECTION",
+        "UNCHANGED",
+        "DEDUPLICATED",
+        "QUARANTINED",
+        "REJECTED",
+    ]
+    assert fields["source_row_number"]["minimum_inclusive"] == 1
+    assert fields["warning_count"]["minimum_inclusive"] == 0
+    assert fields["violation_count"]["minimum_inclusive"] == 0
+
+    foreign_keys = {
+        tuple(foreign_key["fields"]): foreign_key["references"]
+        for foreign_key in contract["foreign_keys"]
+    }
+    assert (
+        foreign_keys[("processing_run_id",)]
+        == "processing_runs.processing_run_id"
+    )
+    assert (
+        foreign_keys[("batch_id",)]
+        == "ingestion_batches.batch_id"
+    )
+
+    assert contract["outcome_id_derivation"]["fields"] == [
+        "processing_run_id",
+        "source_record_id",
+    ]
+
+
+def test_portfolio_record_outcome_keeps_warnings_orthogonal() -> None:
+    contract = _load_contract("portfolio_record_outcomes")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    outcomes = fields["outcome"]["allowed_values"]
+    warning_policy = contract["warning_policy"]
+
+    assert warning_policy["orthogonal_to_outcome"] is True
+    assert (
+        warning_policy[
+            "warning_count_must_not_create_an_additional_outcome"
+        ]
+        is True
+    )
+    assert (
+        warning_policy["warning_count_must_not_exceed_violation_count"]
+        is True
+    )
+    assert warning_policy["warning_count_may_be_positive_for"] == outcomes
+
+    assert contract["outcome_precedence"] == [
+        "REJECTED",
+        "QUARANTINED",
+        "DEDUPLICATED",
+        "UNCHANGED",
+        "ACCEPTED_CORRECTION",
+        "ACCEPTED_NEW",
+    ]
+
+    expected_run_counts = {
+        "ACCEPTED_NEW": "accepted_count",
+        "ACCEPTED_CORRECTION": "accepted_count",
+        "UNCHANGED": "unchanged_count",
+        "DEDUPLICATED": "deduplicated_count",
+        "QUARANTINED": "quarantined_count",
+        "REJECTED": "rejected_count",
+    }
+
+    for outcome, run_count in expected_run_counts.items():
+        assert (
+            contract["outcome_semantics"][outcome][
+                "processing_run_count"
+            ]
+            == run_count
+        )
+
+
+def test_contract_foreign_keys_are_unique() -> None:
+    for contract_name in EXPECTED_CONTRACT_VERSIONS:
+        contract = _load_contract(contract_name)
+        foreign_keys = contract.get("foreign_keys", [])
+
+        signatures = [
+            (
+                tuple(foreign_key["fields"]),
+                foreign_key["references"],
+            )
+            for foreign_key in foreign_keys
+        ]
+
+        assert len(signatures) == len(set(signatures)), (
+            f"{contract_name} contains duplicate foreign keys"
+        )
 
 
 def test_stress_fixtures_have_complete_coverage_and_valid_hashes() -> None:
@@ -301,3 +509,397 @@ def test_contract_artifacts_contain_no_placeholders() -> None:
     for path in artifact_paths:
         content = path.read_text(encoding="utf-8")
         assert placeholder_pattern.search(content) is None, path
+
+
+def test_portfolio_rules_declare_scope_and_disposition() -> None:
+    contract = _load_contract("portfolios")
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    expected_controls = {
+        "PORTFOLIO_ACTIVE_COUNT": (
+            "DATASET",
+            "ERROR",
+            "FAIL_PROCESSING_RUN",
+        ),
+        "PORTFOLIO_ID_UNIQUE": (
+            "DATASET",
+            "ERROR",
+            "FAIL_PROCESSING_RUN",
+        ),
+        "PORTFOLIO_INITIAL_NAV_POSITIVE": (
+            "RECORD",
+            "ERROR",
+            "REJECT",
+        ),
+        "PORTFOLIO_RATIO_RECONCILIATION": (
+            "RECORD",
+            "ERROR",
+            "REJECT",
+        ),
+        "PORTFOLIO_STRATEGY_TARGETS": (
+            "RECORD",
+            "ERROR",
+            "REJECT",
+        ),
+        "PORTFOLIO_INCEPTION_ORDER": (
+            "RECORD",
+            "ERROR",
+            "REJECT",
+        ),
+        "PORTFOLIO_RECORD_HASH_VALID": (
+            "RECORD",
+            "ERROR",
+            "REJECT",
+        ),
+        "PORTFOLIO_SAME_BATCH_IDENTICAL_DUPLICATE": (
+            "BUSINESS_KEY",
+            "WARNING",
+            "WARN_AND_DEDUPLICATE",
+        ),
+        "PORTFOLIO_SAME_BATCH_CONFLICT": (
+            "BUSINESS_KEY",
+            "ERROR",
+            "REJECT",
+        ),
+        "PORTFOLIO_LATER_BATCH_UNCHANGED": (
+            "BUSINESS_KEY",
+            "INFO",
+            "UNCHANGED",
+        ),
+        "PORTFOLIO_LATER_BATCH_CORRECTION": (
+            "BUSINESS_KEY",
+            "INFO",
+            "ACCEPT_CORRECTION",
+        ),
+        "PORTFOLIO_INVALID_CORRECTION": (
+            "BUSINESS_KEY",
+            "ERROR",
+            "REJECT",
+        ),
+    }
+
+    for rule_id, expected in expected_controls.items():
+        rule = rules[rule_id]
+        actual = (
+            rule["scope"],
+            rule["severity"],
+            rule["disposition"],
+        )
+        assert actual == expected
+
+    assert all(
+        "Contract version 1.0.0" not in rule["assertion"]
+        for rule in rules.values()
+    )
+
+
+def test_portfolio_contract_covers_structural_silver_validation() -> None:
+    contract = _load_contract("portfolios")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    portfolio_id_pattern = fields["portfolio_id"]["format"]
+    config_version_pattern = fields["config_version"]["format"]
+
+    assert re.fullmatch(portfolio_id_pattern, "CORE_15_LONG")
+    assert not re.fullmatch(portfolio_id_pattern, "core 15 long")
+    assert re.fullmatch(config_version_pattern, "1.1.0")
+    assert not re.fullmatch(config_version_pattern, "latest")
+
+    expected_controls = {
+        "PORTFOLIO_REQUIRED_FIELDS": ("RECORD", "ERROR", "REJECT"),
+        "PORTFOLIO_TYPES_CASTABLE": ("RECORD", "ERROR", "REJECT"),
+        "PORTFOLIO_ALLOWED_VALUES": ("RECORD", "ERROR", "REJECT"),
+        "PORTFOLIO_ID_FORMAT": ("RECORD", "ERROR", "REJECT"),
+        "PORTFOLIO_CONFIG_VERSION_VALID": (
+            "RECORD",
+            "ERROR",
+            "REJECT",
+        ),
+    }
+
+    for rule_id, expected in expected_controls.items():
+        rule = rules[rule_id]
+        actual = (
+            rule["scope"],
+            rule["severity"],
+            rule["disposition"],
+        )
+        assert actual == expected
+
+
+def test_violation_contract_supports_portfolio_silver_vocabulary() -> None:
+    contract = _load_contract("data_quality_violations")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    assert contract["contract_version"] == "1.2.0"
+
+    assert (
+        "PORTFOLIOS"
+        in fields["dataset_name"]["allowed_values"]
+    )
+    assert fields["severity"]["allowed_values"] == [
+        "WARNING",
+        "ERROR",
+        "CRITICAL",
+    ]
+
+    required_dispositions = {
+        "WARN_AND_ACCEPT",
+        "WARN_AND_DEDUPLICATE",
+        "QUARANTINE",
+        "REJECT",
+    }
+    assert required_dispositions <= set(
+        fields["disposition"]["allowed_values"]
+    )
+
+
+def test_violation_contract_preserves_silver_record_traceability() -> None:
+    contract = _load_contract("data_quality_violations")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    expected_fields = {
+        "processing_run_id": ("STRING", False),
+        "batch_id": ("STRING", False),
+        "source_record_id": ("STRING", False),
+        "source_row_number": ("BIGINT", False),
+        "source_record_sha256": ("STRING", False),
+        "rule_version": ("STRING", False),
+    }
+
+    for field_name, expected in expected_fields.items():
+        field = fields[field_name]
+        assert (field["type"], field["nullable"]) == expected
+
+    assert fields["source_row_number"]["minimum_inclusive"] == 1
+    assert (
+        fields["source_record_sha256"]["format"]
+        == "^[0-9a-f]{64}$"
+    )
+    assert (
+        fields["rule_version"]["format"]
+        == r"^[0-9]+\.[0-9]+\.[0-9]+$"
+    )
+
+    expected_identity = [
+        "processing_run_id",
+        "source_record_id",
+        "rule_id",
+    ]
+    assert contract["natural_key"] == expected_identity
+    assert (
+        contract["violation_id_derivation"]["fields"]
+        == expected_identity
+    )
+
+    source_identity = contract["source_record_id_derivation"]
+    assert source_identity["fields"] == [
+        "batch_id",
+        "source_row_number",
+    ]
+    assert source_identity["delimiter"] == ":"
+    assert (
+        source_identity["format"]
+        == "{batch_id}:{source_row_number}"
+    )
+
+    foreign_keys = {
+        tuple(foreign_key["fields"]): foreign_key["references"]
+        for foreign_key in contract["foreign_keys"]
+    }
+    assert (
+        foreign_keys[("processing_run_id",)]
+        == "processing_runs.processing_run_id"
+    )
+
+    assert contract["contract_version"] == "1.2.0"
+
+
+def test_processing_run_contract_declares_silver_run_identity() -> None:
+    contract = _load_contract("processing_runs")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    assert contract["contract_version"] == "1.0.0"
+    assert contract["dataset_class"] == "operational_audit"
+    assert contract["primary_key"] == ["processing_run_id"]
+    assert contract["natural_key"] == [
+        "source_batch_id",
+        "attempt_number",
+    ]
+
+    scope = contract["operation_scope"]
+    assert scope["input_layer"] == "BRONZE"
+    assert scope["output_layer"] == "SILVER"
+    assert scope["source_batches_per_run"] == 1
+
+    expected_fields = {
+        "processing_run_id": ("STRING", False),
+        "source_batch_id": ("STRING", False),
+        "dataset_name": ("STRING", False),
+        "attempt_number": ("BIGINT", False),
+        "reprocess_of_processing_run_id": ("STRING", True),
+        "started_at_utc": ("TIMESTAMP", False),
+        "completed_at_utc": ("TIMESTAMP", True),
+        "status": ("STRING", False),
+        "dataset_contract_version": ("STRING", False),
+        "code_version": ("STRING", False),
+        "contract_version": ("STRING", False),
+    }
+
+    for field_name, expected in expected_fields.items():
+        field = fields[field_name]
+        assert (field["type"], field["nullable"]) == expected
+
+    assert fields["processing_run_id"]["format"] == "UUID"
+    assert fields["source_batch_id"]["format"] == "UUID"
+    assert fields["attempt_number"]["minimum_inclusive"] == 1
+    assert (
+        fields["dataset_contract_version"]["format"]
+        == r"^[0-9]+\.[0-9]+\.[0-9]+$"
+    )
+    assert fields["code_version"]["format"] == "^[0-9a-f]{7,40}$"
+
+    foreign_keys = {
+        tuple(foreign_key["fields"]): foreign_key["references"]
+        for foreign_key in contract["foreign_keys"]
+    }
+    assert (
+        foreign_keys[("source_batch_id",)]
+        == "ingestion_batches.batch_id"
+    )
+    assert (
+        foreign_keys[("reprocess_of_processing_run_id",)]
+        == "processing_runs.processing_run_id"
+    )
+
+
+def test_processing_run_contract_reconciles_record_outcomes() -> None:
+    contract = _load_contract("processing_runs")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    count_fields = [
+        "evaluated_count",
+        "accepted_count",
+        "quarantined_count",
+        "rejected_count",
+        "unchanged_count",
+        "deduplicated_count",
+        "warning_count",
+    ]
+
+    for field_name in count_fields:
+        field = fields[field_name]
+        assert field["type"] == "BIGINT"
+        assert field["nullable"] is False
+        assert field["minimum_inclusive"] == 0
+
+    reconciliation = contract["count_reconciliation"]
+    assert reconciliation["mutually_exclusive_outcomes"] == [
+        "accepted_count",
+        "quarantined_count",
+        "rejected_count",
+        "unchanged_count",
+        "deduplicated_count",
+    ]
+    assert reconciliation["equation"] == (
+        "evaluated_count = accepted_count + quarantined_count "
+        "+ rejected_count + unchanged_count + deduplicated_count"
+    )
+    assert reconciliation["warning_count_is_orthogonal"] is True
+
+
+def test_processing_run_contract_requires_atomic_publication() -> None:
+    contract = _load_contract("processing_runs")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    expected_fields = {
+        "canonical_before_count": ("BIGINT", False),
+        "canonical_after_count": ("BIGINT", False),
+        "input_record_set_sha256": ("STRING", False),
+        "canonical_before_sha256": ("STRING", True),
+        "canonical_after_sha256": ("STRING", True),
+        "published": ("BOOLEAN", False),
+        "published_at_utc": ("TIMESTAMP", True),
+        "failed_rule_ids": ("ARRAY<STRING>", False),
+        "error_code": ("STRING", True),
+        "error_message": ("STRING", True),
+    }
+
+    for field_name, expected in expected_fields.items():
+        field = fields[field_name]
+        assert (field["type"], field["nullable"]) == expected
+
+    assert fields["canonical_before_count"]["minimum_inclusive"] == 0
+    assert fields["canonical_after_count"]["minimum_inclusive"] == 0
+
+    for field_name in [
+        "input_record_set_sha256",
+        "canonical_before_sha256",
+        "canonical_after_sha256",
+    ]:
+        assert fields[field_name]["format"] == "^[0-9a-f]{64}$"
+
+    policy = contract["publication_policy"]
+    assert policy["mode"] == "ATOMIC"
+    assert policy["publish_allowed_statuses"] == [
+        "SUCCEEDED",
+        "SUCCEEDED_WITH_WARNINGS",
+    ]
+    assert policy["failed_run_publishes"] is False
+    assert policy["preserve_last_good_snapshot_on_failure"] is True
+    assert policy["no_change_run_may_skip_publication"] is True
+
+def test_processing_run_contract_defines_complete_status_lifecycle() -> None:
+    contract = _load_contract("processing_runs")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+
+    allowed_statuses = fields["status"]["allowed_values"]
+    semantics = contract["status_semantics"]
+
+    assert set(semantics) == set(allowed_statuses)
+
+    for status in ["PENDING", "RUNNING"]:
+        assert semantics[status]["terminal"] is False
+        assert (
+            semantics[status]["completed_at_utc"]
+            == "must_be_null"
+        )
+        assert semantics[status]["published"] is False
+
+    for status in [
+        "SUCCEEDED",
+        "SUCCEEDED_WITH_WARNINGS",
+        "FAILED",
+    ]:
+        assert semantics[status]["terminal"] is True
+        assert semantics[status]["completed_at_utc"] == "required"
+
+    assert semantics["FAILED"]["published"] is False
