@@ -2,16 +2,17 @@
 
 ## Current position
 
-- **Current phase:** Phase 03 — Risk Requirements and Data Contracts
+- **Current phase:** Phase 04 — Bronze Ingestion
 - **Status:** Complete
-- **Next gate:** Start Phase 04 in a separate chat after verifying the final Phase 03
-  completion commit and clean synchronized branch
-- **Last updated:** 2026-08-27
+- **Next gate:** Verify the final Phase 04 completion commit and clean synchronized
+  branch, then start Phase 05 in a separate chat
+- **Last updated:** 2026-09-02
 
-The risk scope, data-source strategy, 11 logical dataset contracts, deterministic
-reference fixtures, portfolio allocations, stress scenarios, and edge-case examples
-are defined and tested. The learner passed the Phase 03 explain-back. No Databricks
-tables, Bronze ingestion, or live-data retrieval has begun.
+Phase 04 landed the approved deterministic portfolio fixture in a managed Unity
+Catalog Volume, created source-aligned Bronze Delta tables, added record-level
+lineage and immutable batch-attempt auditing, and proved safe identical reruns. The
+learner passed the Phase 04 explain-back. Silver cleaning and live-data retrieval
+have not begun.
 
 ## Status definitions
 
@@ -30,8 +31,8 @@ tables, Bronze ingestion, or live-data retrieval has begun.
 | --- | --- | --- | --- |
 | 01 | Workstation and Repository Foundation | Complete | `bb80972` — foundation |
 | 02 | Databricks and SQL Connectivity | Complete | `7207544` — validation record |
-| 03 | Risk Requirements and Data Contracts | Complete | `0f65701` — completed handoff |
-| 04 | Bronze Ingestion | Not started | — |
+| 03 | Risk Requirements and Data Contracts | Complete | `9cec282` — completed handoff |
+| 04 | Bronze Ingestion | Complete | `bf08e36` — ingestion verification |
 | 05 | Silver Quality and Canonical Data | Not started | — |
 | 06 | Gold Analytics Foundation | Not started | — |
 | 07 | Risk Measures and Validation | Not started | — |
@@ -79,12 +80,20 @@ tables, Bronze ingestion, or live-data retrieval has begun.
 | Use exchange-aware trading calendars | Distinguishes expected closures from missing-price failures |
 | Use varied deterministic stress shocks | Produces transparent portfolio sensitivity without unexplained randomness |
 | Label stress scenarios as hypothetical | Prevents assumptions from being mistaken for forecasts or investment advice |
+| Use a managed Unity Catalog Volume for Bronze landing | Provides governed storage without requiring external cloud credentials |
+| Use content-addressed source paths | SHA-256 separates changed files and makes identical source bytes observable |
+| Preserve portfolio source fields as strings in Bronze | Prevents premature cleaning, casting, or loss of source representation |
+| Keep the small Bronze tables unpartitioned | Partition overhead would exceed the benefit for these small datasets |
+| Record identical reruns as `SKIPPED_DUPLICATE` | Prevents duplicate portfolio rows while preserving every ingestion attempt |
+| Use the portfolio fixture as the controlled Phase 04 proof | Demonstrates the ingestion pattern without claiming live-data ingestion |
+| Treat portfolio and audit writes as separate Delta transactions | Delta guarantees atomicity per table, not across both tables; validation and duplicate guards reduce risk |
 
-## Open confirmations for Phase 04
+## Open confirmations for Phase 05
 
-- Verify the final Phase 03 completion commit and clean synchronized branch.
-- Start Bronze ingestion only in the dedicated Phase 04 chat.
-- Do not begin Silver cleaning or claim live-data ingestion.
+- Verify the final Phase 04 documentation commit and clean synchronized branch.
+- Treat Bronze as immutable input to Silver.
+- Implement Silver casting, validation, standardization, and deduplication only.
+- Do not begin Gold analytics or live market-data ingestion.
 
 ## Evidence log
 
@@ -129,6 +138,15 @@ Add evidence here only after it is produced on the learner's environment.
 | 2026-08-27 | 03 | `make check` | Pass | Ruff passed, pytest reported 12 passed, and the environment diagnostic reported 11/11 passed |
 | 2026-08-27 | 03 | Explain-back knowledge check | Pass | Learner explained grain, keys, Bronze preservation, batch statuses, warning counts, trading calendars, exposure, shorts, and stress-test limitations |
 | 2026-08-27 | 03 | Phase boundary | Pass | No Databricks table, Bronze ingestion, live-data retrieval, or licensed dataset was introduced |
+| 2026-09-02 | 04 | Managed landing and Bronze DDL | Pass | Created the managed `bronze_landing` Volume and two unpartitioned Bronze Delta tables |
+| 2026-09-02 | 04 | Deterministic source manifest | Pass | Recorded the 768-byte portfolio fixture, 2 source records, 16 columns, source SHA-256, and manifest SHA-256 |
+| 2026-09-02 | 04 | Initial Bronze ingestion | Pass | Persisted 2 portfolio records and 1 `SUCCEEDED` batch-audit record |
+| 2026-09-02 | 04 | Identical-source rerun | Pass | Portfolio count remained 2 while the audit count became 2; the new attempt was `SKIPPED_DUPLICATE` and linked to the successful batch |
+| 2026-09-02 | 04 | Source preservation and lineage | Pass | Verified source row numbers, file and record hashes, raw records, batch linkage, and preservation of empty strings |
+| 2026-09-02 | 04 | Malformed CSV validation | Pass | Automated testing confirmed that a record-width mismatch stops processing with a clear error |
+| 2026-09-02 | 04 | `make check` | Pass | Ruff passed, pytest reported 26 passed, and the environment diagnostic reported 11/11 passed |
+| 2026-09-02 | 04 | Explain-back knowledge check | Pass | Learner explained manifests, batch auditing, source and record hashes, Bronze preservation, Spark execution, duplicate reruns, and corrupted-source rejection |
+| 2026-09-02 | 04 | Phase boundary | Pass | No Silver transformation, live market-data retrieval, Gold analytics, Power BI work, or FastAPI development was introduced |
 
 ## Handoffs
 
@@ -139,6 +157,8 @@ Completed phase handoffs belong in `docs/handoffs/` and use
   glossary, knowledge check, and next-phase readiness
 - `docs/handoffs/phase-03-handoff.md` — Phase 03 requirements, contracts,
   evidence, glossary, knowledge check, and Phase 04 readiness
+- `docs/handoffs/phase-04-handoff.md` — Phase 04 landing, Bronze ingestion,
+  lineage, idempotency, validation evidence, knowledge check, and Phase 05 readiness
 
 ## New-chat kickoff prompt
 

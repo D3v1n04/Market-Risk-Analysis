@@ -1,14 +1,21 @@
 # Market Risk Analysis
 
-A learning-first project that will ingest market data, preserve its history, improve
-its quality through lakehouse layers, and produce explainable risk analytics.
+A learning-first market-risk analytics lakehouse that preserves source history,
+improves data quality through governed layers, and produces explainable portfolio
+risk analytics.
 
-## Part 01 milestone
+## Current milestone
 
-This repository currently provides a reproducible Python environment, an installable
-package, automated tests, code-quality checks, safe local configuration, and an
-environment diagnostic. It deliberately does **not** implement market data ingestion
-or risk calculations yet.
+Phases 01 through 04 are complete.
+
+Phase 04 implemented deterministic Bronze ingestion for the approved portfolio
+fixture. The project now includes a managed Unity Catalog landing Volume,
+source and manifest fingerprints, source-aligned Bronze Delta tables, record-level
+lineage, immutable batch-attempt auditing, and safe duplicate reruns.
+
+The project does not retrieve live market data or perform Silver cleaning yet.
+Dates, numbers, booleans, blank values, and other source representations remain
+unchanged strings in Bronze.
 
 ## Quick start
 
@@ -20,12 +27,13 @@ git clone <repository-url>
 cd Market-Risk-Analysis
 make setup
 make check
+
 ```
 
-Expected final diagnostic line:
+Expected final environment diagnostic:
 
 ```text
-8/8 checks passed
+11/11 checks passed
 ```
 
 Useful commands:
@@ -39,35 +47,47 @@ Useful commands:
 | `make env` | Inspect local prerequisites and project paths |
 | `make check` | Run the complete local quality gate |
 
-The Make targets keep uv's disposable download cache under `.cache/uv`. This makes
-the same commands work in developer machines and restricted build environments.
-
 ## Repository map
 
 ```text
 .
-├── data/                         # Explanation only; generated data is ignored
-├── docs/                         # Learning guides and decisions
-├── src/market_risk_analysis/     # Installable application code
-├── tests/                        # Automated behavior checks
-├── .env.example                  # Safe configuration names, never secrets
-├── .gitignore                    # Files Git must not track
-├── Makefile                      # Short, memorable developer commands
+├── contracts/                    # Machine-readable data contracts
+├── data/                         # Tracked fixtures and ignored generated data
+├── docs/                         # Learning guides, decisions, and handoffs
+├── notebooks/bronze/             # Git-backed Databricks ingestion notebook
+├── sql/                          # Version-controlled Databricks SQL
+├── src/market_risk_analysis/     # Installable Python application code
+├── tests/                        # Automated behavior and structure checks
+├── Makefile                      # Short developer commands
 ├── pyproject.toml                # Python project and tool configuration
-└── uv.lock                       # Exact resolved development dependencies
+└── uv.lock                       # Resolved development dependencies
 ```
+
+## Phase 04 Bronze milestone
+
+The persistent Databricks objects are:
+
+- `workspace.devin_market_risk_dev.bronze_landing`
+- `workspace.devin_market_risk_dev.bronze_portfolios`
+- `workspace.devin_market_risk_dev.bronze_ingestion_batches`
+
+The controlled portfolio fixture produced two Bronze records and one successful
+audit record. An identical rerun preserved the two portfolio records and added a
+`SKIPPED_DUPLICATE` audit record linked to the original batch.
 
 ## Project plan and learning path
 
-- [Project roadmap](docs/project-roadmap.md) defines the 12 phases, tools,
-  deliverables, learning goals, and exit gates.
-- [Progress tracker](docs/progress.md) records the current phase, confirmed
-  decisions, evidence, and the prompt used to start a separate phase chat.
-- [Phase handoff template](docs/phase-handoff-template.md) keeps project state
-  transferable between phase chats.
-- [Part 01: Environment & Repository Setup](docs/part-01-environment-and-repository-setup.md)
-  is the detailed guide for the current phase.
+- [Project roadmap](docs/project-roadmap.md) defines the phases and exit gates.
+- [Progress tracker](docs/progress.md) records the current phase and evidence.
+- [Phase 04 handoff](docs/handoffs/phase-04-handoff.md) records the Bronze
+  implementation and Phase 05 readiness.
+- [Phase handoff template](docs/phase-handoff-template.md) defines the handoff
+  structure.
 
-Do not move to Phase 02 until Phase 01 has been run on the learner's Ubuntu machine,
-its explain-back gate is complete, the first Git commit exists, and the progress
-tracker and handoff contain the evidence.
+## Current phase boundary
+
+The next phase is Phase 05 — Silver Quality and Canonical Data. Silver will cast,
+validate, standardize, and deduplicate source values while Bronze remains immutable.
+
+Live market-data retrieval, Gold risk calculations, Power BI work, and FastAPI
+development have not started.
