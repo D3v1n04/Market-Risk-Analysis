@@ -1,0 +1,171 @@
+fixture_version: 1.0.0
+scenario_id: PHASE_06_ANALYTICS_FOUNDATION
+description: Deterministic full-universe scenario for Silver position and cash derivation and later Gold metric reconciliation.
+currency: USD
+initial_nav: '1000000.00'
+
+portfolio_ids:
+  - CORE_15_LONG
+  - LONG_SHORT_130_30
+
+instrument_ids:
+  - NVDA_US
+  - AAPL_US
+  - GOOGL_US
+  - MSFT_US
+  - TSM_US
+  - AVGO_US
+  - AMZN_US
+  - WMT_US
+  - LLY_US
+  - UNH_US
+  - JPM_US
+  - BRK_B_US
+  - XOM_US
+  - TSLA_US
+  - LMT_US
+
+business_dates:
+  inception: '2016-01-04'
+  market_move: '2016-01-05'
+  cash_dividend: '2016-01-06'
+  stock_split: '2016-01-07'
+
+price_generation:
+  open_equals_close: true
+  high_equals_close: true
+  low_equals_close: true
+  default_volume: 1000000
+  quote_currency: USD
+
+  raw_close_by_date:
+    '2016-01-04':
+      all_instruments: '100.00000000'
+
+    '2016-01-05':
+      NVDA_US: '110.00000000'
+      AAPL_US: '95.00000000'
+      GOOGL_US: '102.00000000'
+      MSFT_US: '100.00000000'
+      TSM_US: '104.00000000'
+      AVGO_US: '97.00000000'
+      AMZN_US: '101.00000000'
+      WMT_US: '98.00000000'
+      LLY_US: '106.00000000'
+      UNH_US: '96.00000000'
+      JPM_US: '103.00000000'
+      BRK_B_US: '99.00000000'
+      XOM_US: '105.00000000'
+      TSLA_US: '90.00000000'
+      LMT_US: '102.00000000'
+
+    '2016-01-06':
+      carry_forward_from: '2016-01-05'
+
+    '2016-01-07':
+      carry_forward_from: '2016-01-06'
+      overrides:
+        NVDA_US: '55.00000000'
+
+  adjusted_close_by_date:
+    '2016-01-04':
+      equals_raw_close: true
+
+    '2016-01-05':
+      equals_raw_close: true
+
+    '2016-01-06':
+      carry_forward_from: '2016-01-05'
+      overrides:
+        WMT_US: '99.00000000'
+
+    '2016-01-07':
+      carry_forward_from: '2016-01-06'
+      overrides:
+        NVDA_US: '110.00000000'
+
+corporate_actions:
+  - instrument_id: WMT_US
+    effective_date: '2016-01-06'
+    action_type: CASH_DIVIDEND
+    dividend_amount_per_share: '1.00000000'
+    dividend_currency: USD
+    split_ratio: null
+
+  - instrument_id: NVDA_US
+    effective_date: '2016-01-07'
+    action_type: STOCK_SPLIT
+    dividend_amount_per_share: null
+    dividend_currency: null
+    split_ratio: '2.0000000000'
+
+expected_reconciliations:
+  inception:
+    CORE_15_LONG:
+      signed_market_value: '1000000.0000000000000000'
+      long_market_value: '1000000.0000000000000000'
+      short_market_value: '0.0000000000000000'
+      gross_market_value: '1000000.0000000000000000'
+      opening_cash_balance: '0.0000000000000000'
+
+    LONG_SHORT_130_30:
+      signed_market_value: '1000000.0000000000000000'
+      long_market_value: '1300000.0000000000000000'
+      short_market_value: '300000.0000000000000000'
+      gross_market_value: '1600000.0000000000000000'
+      opening_cash_balance: '0.0000000000000000'
+
+  market_move:
+    CORE_15_LONG:
+      daily_pnl: '7499.9999970000000000'
+      closing_nav: '1007499.9999970000000000'
+
+    LONG_SHORT_130_30:
+      daily_pnl: '40440.0000000000000000'
+      closing_nav: '1040440.0000000000000000'
+
+  cash_dividend:
+    CORE_15_LONG:
+      prior_wmt_signed_quantity: '650.0000000000000000'
+      dividend_cash_flow: '650.0000000000000000'
+      closing_cash_balance: '650.0000000000000000'
+      daily_pnl: '650.0000000000000000'
+
+    LONG_SHORT_130_30:
+      prior_wmt_signed_quantity: '-1000.0000000000000000'
+      dividend_cash_flow: '-1000.0000000000000000'
+      closing_cash_balance: '-1000.0000000000000000'
+      daily_pnl: '-1000.0000000000000000'
+
+  stock_split:
+    CORE_15_LONG:
+      prior_nvda_signed_quantity: '950.0000000000000000'
+      post_split_nvda_signed_quantity: '1900.0000000000000000'
+      pre_split_nvda_market_value: '104500.0000000000000000'
+      post_split_nvda_market_value: '104500.0000000000000000'
+      split_only_pnl: '0.0000000000000000'
+
+    LONG_SHORT_130_30:
+      prior_nvda_signed_quantity: '1482.0000000000000000'
+      post_split_nvda_signed_quantity: '2964.0000000000000000'
+      pre_split_nvda_market_value: '163020.0000000000000000'
+      post_split_nvda_market_value: '163020.0000000000000000'
+      split_only_pnl: '0.0000000000000000'
+
+failure_cases:
+  - case_id: LONG_SHORT_MISSING_PRIOR_POSITION
+    output_dataset_name: POSITIONS
+    portfolio_id: LONG_SHORT_130_30
+    business_date: '2016-01-08'
+    omitted_input:
+      dataset_name: POSITIONS
+      portfolio_id: LONG_SHORT_130_30
+      instrument_id: UNH_US
+      position_date: '2016-01-07'
+    expected_status: FAILED
+    expected_published: false
+    expected_failed_rule_id: POSITION_INPUT_COVERAGE
+    unaffected_run:
+      portfolio_id: CORE_15_LONG
+      expected_status: SUCCEEDED
+      expected_published: true

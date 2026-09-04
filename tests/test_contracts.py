@@ -1330,3 +1330,266 @@ def test_derived_silver_contracts_use_derivation_run_lineage() -> None:
             == "derivation_runs.derivation_run_id"
         )
         assert output_name in allowed_outputs
+
+
+def test_phase_06_scenario_matches_approved_scope() -> None:
+    path = FIXTURE_DIR / "phase_06_analytics_scenario.yml"
+    scenario = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    instruments = {
+        row["instrument_id"]
+        for row in _load_fixture("instruments.csv")
+    }
+    portfolios = {
+        row["portfolio_id"]
+        for row in _load_fixture("portfolios.csv")
+    }
+
+    assert scenario["fixture_version"] == "1.0.0"
+    assert scenario["scenario_id"] == (
+        "PHASE_06_ANALYTICS_FOUNDATION"
+    )
+    assert scenario["currency"] == "USD"
+    assert Decimal(scenario["initial_nav"]) == Decimal("1000000.00")
+    assert set(scenario["portfolio_ids"]) == portfolios
+    assert set(scenario["instrument_ids"]) == instruments
+    assert len(scenario["instrument_ids"]) == 15
+
+    assert scenario["business_dates"] == {
+        "inception": "2016-01-04",
+        "market_move": "2016-01-05",
+        "cash_dividend": "2016-01-06",
+        "stock_split": "2016-01-07",
+    }
+
+    price_generation = scenario["price_generation"]
+    market_date = scenario["business_dates"]["market_move"]
+    market_prices = price_generation["raw_close_by_date"][market_date]
+
+    assert set(market_prices) == instruments
+    assert price_generation["open_equals_close"] is True
+    assert price_generation["high_equals_close"] is True
+    assert price_generation["low_equals_close"] is True
+    assert price_generation["default_volume"] == 1000000
+    assert price_generation["quote_currency"] == "USD"
+
+    actions = {
+        (action["instrument_id"], action["action_type"]): action
+        for action in scenario["corporate_actions"]
+    }
+    assert set(actions) == {
+        ("WMT_US", "CASH_DIVIDEND"),
+        ("NVDA_US", "STOCK_SPLIT"),
+    }
+    assert Decimal(
+        actions[("WMT_US", "CASH_DIVIDEND")][
+            "dividend_amount_per_share"
+        ]
+    ) == Decimal("1.00000000")
+    assert Decimal(
+        actions[("NVDA_US", "STOCK_SPLIT")]["split_ratio"]
+    ) == Decimal("2.0000000000")
+
+
+def test_phase_06_scenario_independently_reconciles_metrics() -> None:
+    path = FIXTURE_DIR / "phase_06_analytics_scenario.yml"
+    scenario = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    allocation_rows = _load_fixture("target_allocations.csv")
+    portfolio_rows = _load_fixture("portfolios.csv")
+
+    portfolio_nav = {
+        row["portfolio_id"]: Decimal(row["initial_nav"])
+        for row in portfolio_rows
+    }
+    weights_by_portfolio: dict[str, dict[str, Decimal]] = {
+        portfolio_id: {}
+        for portfolio_id in scenario["portfolio_ids"]
+    }
+    for row in allocation_rows:
+        portfolio_id = row["portfolio_id"]
+        if portfolio_id in weights_by_portfolio:
+            weights_by_portfolio[portfolio_id][
+                row["instrument_id"]
+            ] = Decimal(row["target_weight"])
+
+    dates = scenario["business_dates"]
+    raw_prices = scenario["price_generation"]["raw_close_by_date"]
+
+    inception_price = Decimal(
+        raw_prices[dates["inception"]]["all_instruments"]
+    )
+    market_prices = {
+        instrument_id: Decimal(value)
+        for instrument_id, value in raw_prices[
+            dates["market_move"]
+        ].items()
+    }
+    split_price = Decimal(
+        raw_prices[dates["stock_split"]]["overrides"]["NVDA_US"]
+    )
+
+    actions = {
+        (action["instrument_id"], action["action_type"]): action
+        for action in scenario["corporate_actions"]
+    }
+    dividend_per_share = Decimal(
+        actions[("WMT_US", "CASH_DIVIDEND")][
+            "dividend_amount_per_share"
+        ]
+    )
+    split_ratio = Decimal(
+        actions[("NVDA_US", "STOCK_SPLIT")]["split_ratio"]
+    )
+
+    expected = scenario["expected_reconciliations"]
+    instrument_ids = set(scenario["instrument_ids"])
+
+    for portfolio_id in scenario["portfolio_ids"]:
+        nav = portfolio_nav[portfolio_id]
+        weights = weights_by_portfolio[portfolio_id]
+        assert set(weights) == instrument_ids
+
+        quantities = {
+            instrument_id: weight * nav / inception_price
+            for instrument_id, weight in weights.items()
+        }
+        inception_values = {
+            instrument_id: quantity * inception_price
+            for instrument_id, quantity in quantities.items()
+        }
+
+        signed_market_value = sum(
+            inception_values.values(),
+            Decimal(),
+        )
+        long_market_value = sum(
+            (
+                value
+                for value in inception_values.values()
+                if value > 0
+            ),
+            Decimal(),
+        )
+        short_market_value = -sum(
+            (
+                value
+                for value in inception_values.values()
+                if value < 0
+            ),
+            Decimal(),
+        )
+        gross_market_value = (
+            long_market_value + short_market_value
+        )
+        opening_cash = nav - signed_market_value
+
+        inception_expected = expected["inception"][portfolio_id]
+        assert signed_market_value == Decimal(
+            inception_expected["signed_market_value"]
+        )
+        assert long_market_value == Decimal(
+            inception_expected["long_market_value"]
+        )
+        assert short_market_value == Decimal(
+            inception_expected["short_market_value"]
+        )
+        assert gross_market_value == Decimal(
+            inception_expected["gross_market_value"]
+        )
+        assert opening_cash == Decimal(
+            inception_expected["opening_cash_balance"]
+        )
+
+        market_move_pnl = sum(
+            (
+                quantities[instrument_id]
+                * (market_prices[instrument_id] - inception_price)
+                for instrument_id in instrument_ids
+            ),
+            Decimal(),
+        )
+        market_expected = expected["market_move"][portfolio_id]
+        assert market_move_pnl == Decimal(
+            market_expected["daily_pnl"]
+        )
+        assert nav + market_move_pnl == Decimal(
+            market_expected["closing_nav"]
+        )
+
+        wmt_quantity = quantities["WMT_US"]
+        dividend_cash_flow = (
+            wmt_quantity * dividend_per_share
+        )
+        dividend_expected = expected["cash_dividend"][portfolio_id]
+
+        assert wmt_quantity == Decimal(
+            dividend_expected["prior_wmt_signed_quantity"]
+        )
+        assert dividend_cash_flow == Decimal(
+            dividend_expected["dividend_cash_flow"]
+        )
+        assert dividend_cash_flow == Decimal(
+            dividend_expected["closing_cash_balance"]
+        )
+        assert dividend_cash_flow == Decimal(
+            dividend_expected["daily_pnl"]
+        )
+
+        prior_nvda_quantity = quantities["NVDA_US"]
+        post_split_quantity = (
+            prior_nvda_quantity * split_ratio
+        )
+        pre_split_value = (
+            prior_nvda_quantity * market_prices["NVDA_US"]
+        )
+        post_split_value = post_split_quantity * split_price
+        split_expected = expected["stock_split"][portfolio_id]
+
+        assert prior_nvda_quantity == Decimal(
+            split_expected["prior_nvda_signed_quantity"]
+        )
+        assert post_split_quantity == Decimal(
+            split_expected["post_split_nvda_signed_quantity"]
+        )
+        assert pre_split_value == Decimal(
+            split_expected["pre_split_nvda_market_value"]
+        )
+        assert post_split_value == Decimal(
+            split_expected["post_split_nvda_market_value"]
+        )
+        assert post_split_value - pre_split_value == Decimal(
+            split_expected["split_only_pnl"]
+        )
+
+
+def test_phase_06_scenario_isolates_portfolio_failure() -> None:
+    path = FIXTURE_DIR / "phase_06_analytics_scenario.yml"
+    scenario = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    assert len(scenario["failure_cases"]) == 1
+    failure = scenario["failure_cases"][0]
+
+    assert failure["case_id"] == (
+        "LONG_SHORT_MISSING_PRIOR_POSITION"
+    )
+    assert failure["output_dataset_name"] == "POSITIONS"
+    assert failure["portfolio_id"] == "LONG_SHORT_130_30"
+    assert failure["business_date"] == "2016-01-08"
+    assert failure["omitted_input"] == {
+        "dataset_name": "POSITIONS",
+        "portfolio_id": "LONG_SHORT_130_30",
+        "instrument_id": "UNH_US",
+        "position_date": "2016-01-07",
+    }
+    assert failure["expected_status"] == "FAILED"
+    assert failure["expected_published"] is False
+    assert (
+        failure["expected_failed_rule_id"]
+        == "POSITION_INPUT_COVERAGE"
+    )
+
+    unaffected = failure["unaffected_run"]
+    assert unaffected["portfolio_id"] == "CORE_15_LONG"
+    assert unaffected["expected_status"] == "SUCCEEDED"
+    assert unaffected["expected_published"] is True

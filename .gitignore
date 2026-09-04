@@ -17,6 +17,8 @@ build/
 # Local lakehouse data (never commit generated or sensitive datasets)
 data/**
 !data/README.md
+!data/fixtures/
+!data/fixtures/phase_06_analytics_scenario.yml
 
 # Editors and operating systems
 .idea/
