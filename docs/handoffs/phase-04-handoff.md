@@ -70,7 +70,7 @@ The deterministic manifest SHA-256 is:
 The successful batch was:
 
 ```text
-d01b3f67-0175-4793-97c4-e46446813954
+01b3f6f7-0175-4793-97c4-e46446813954
 ```
 
 The duplicate attempt was:

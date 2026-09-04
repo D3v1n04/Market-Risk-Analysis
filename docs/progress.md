@@ -2,17 +2,17 @@
 
 ## Current position
 
-- **Current phase:** Phase 04 — Bronze Ingestion
+- **Current phase:** Phase 05 — Silver Quality and Canonical Data
 - **Status:** Complete
-- **Next gate:** Verify the final Phase 04 completion commit and clean synchronized
-  branch, then start Phase 05 in a separate chat
-- **Last updated:** 2026-09-02
+- **Next gate:** Complete the Phase 05 documentation commit, synchronize the branch,
+  and start Phase 06 — Gold Analytics Foundation
+- **Last updated:** 2026-09-04
 
-Phase 04 landed the approved deterministic portfolio fixture in a managed Unity
-Catalog Volume, created source-aligned Bronze Delta tables, added record-level
-lineage and immutable batch-attempt auditing, and proved safe identical reruns. The
-learner passed the Phase 04 explain-back. Silver cleaning and live-data retrieval
-have not begun.
+Phase 05 converted the controlled Bronze portfolio batch into two typed, uniquely
+keyed, active canonical Silver records while preserving Bronze. One partially
+committed failed attempt was recovered auditably, and an unchanged rerun left the
+canonical count and fingerprint unchanged. The learner passed the Phase 05
+explain-back. Gold analytics and live-data retrieval have not begun.
 
 ## Status definitions
 
@@ -33,7 +33,7 @@ have not begun.
 | 02 | Databricks and SQL Connectivity | Complete | `7207544` — validation record |
 | 03 | Risk Requirements and Data Contracts | Complete | `9cec282` — completed handoff |
 | 04 | Bronze Ingestion | Complete | `bf08e36` — ingestion verification |
-| 05 | Silver Quality and Canonical Data | Not started | — |
+| 05 | Silver Quality and Canonical Data | Complete | `0d09a6a` — canonical merge target alias fix |
 | 06 | Gold Analytics Foundation | Not started | — |
 | 07 | Risk Measures and Validation | Not started | — |
 | 08 | SQL Serving and DBeaver QA | Not started | — |
@@ -87,13 +87,21 @@ have not begun.
 | Record identical reruns as `SKIPPED_DUPLICATE` | Prevents duplicate portfolio rows while preserving every ingestion attempt |
 | Use the portfolio fixture as the controlled Phase 04 proof | Demonstrates the ingestion pattern without claiming live-data ingestion |
 | Treat portfolio and audit writes as separate Delta transactions | Delta guarantees atomicity per table, not across both tables; validation and duplicate guards reduce risk |
+| Preserve Bronze as immutable Silver input | Retains reproducible source representations and lineage while Silver adds trust |
+| Use `TRY_CAST` for Silver conversions | Invalid values remain observable to quality rules without stopping evaluation immediately |
+| Separate warning violations from final record outcomes | Nonfatal concerns remain visible without double-counting or rejecting usable records |
+| Preserve and link failed Silver attempts to recovery | Per-table Delta writes can commit independently, so partial evidence must remain auditable |
+| Qualify joined duplicate columns and alias Delta merge targets | Spark and Delta resolve column references only when their intended relation is explicit |
+| Hash ordered canonical snapshots for idempotency proof | Matching counts alone cannot prove that record content is unchanged |
 
-## Open confirmations for Phase 05
+## Open confirmations for Phase 06
 
-- Verify the final Phase 04 documentation commit and clean synchronized branch.
-- Treat Bronze as immutable input to Silver.
-- Implement Silver casting, validation, standardization, and deduplication only.
-- Do not begin Gold analytics or live market-data ingestion.
+- Complete the Phase 05 documentation commit and synchronize the branch.
+- Reconfirm the four Silver table counts and canonical fingerprint before building
+  on them.
+- Define every Gold metric's grain, unit, currency, sign convention, and as-of date.
+- Reconcile Gold calculations independently and do not begin live market-data
+  retrieval, Power BI work, or later-phase risk measures.
 
 ## Evidence log
 
@@ -147,6 +155,14 @@ Add evidence here only after it is produced on the learner's environment.
 | 2026-09-02 | 04 | `make check` | Pass | Ruff passed, pytest reported 26 passed, and the environment diagnostic reported 11/11 passed |
 | 2026-09-02 | 04 | Explain-back knowledge check | Pass | Learner explained manifests, batch auditing, source and record hashes, Bronze preservation, Spark execution, duplicate reruns, and corrupted-source rejection |
 | 2026-09-02 | 04 | Phase boundary | Pass | No Silver transformation, live market-data retrieval, Gold analytics, Power BI work, or FastAPI development was introduced |
+| 2026-09-04 | 05 | Local quality gate | Pass | Ruff passed; pytest reported 61 passed, including 5 Silver SQL and 16 Silver notebook tests; environment diagnostic reported 11/11 passed |
+| 2026-09-04 | 05 | Static-test boundary | Confirmed | Local Silver tests inspect contracts and source safeguards; live Databricks execution exposed joined-column and Delta-target alias errors that static tests did not execute |
+| 2026-09-04 | 05 | Failed-attempt audit recovery | Pass | Run `e4906a8a-e1e0-415d-abd2-712e5e5deb87` was recorded as `FAILED`; its 2 outcomes and 2 warnings remained auditable while canonical count stayed 0 |
+| 2026-09-04 | 05 | Recovery publication | Pass | Linked run `f21e9261-e1dd-43cf-95b5-759d8a439659` evaluated and accepted 2 records, recorded 2 warnings, and published 2 canonical portfolios |
+| 2026-09-04 | 05 | Idempotency verification | Pass | Run `71bf477d-40f4-492d-a45e-a5517c2cd7ba` classified both records unchanged, accepted 0, published nothing, and left canonical count at 2 |
+| 2026-09-04 | 05 | Canonical fingerprint | Pass | Before and after SHA-256 matched: `c828f4b29b8b04ead42c38e7f99110b420fd2b0a186cce60bc820913fff25ebc` |
+| 2026-09-04 | 05 | Final Silver reconciliation | Pass | 2 active unique canonical portfolios, 3 processing runs, 6 record outcomes, and 6 missing-inception-date warnings were persisted; Bronze was not modified |
+| 2026-09-04 | 05 | Explain-back knowledge check | Pass | Learner explained Bronze versus Silver, `TRY_CAST`, warnings versus outcomes, unchanged reruns, per-table Delta atomicity, recovery lineage, and explicit aliases |
 
 ## Handoffs
 
@@ -159,6 +175,8 @@ Completed phase handoffs belong in `docs/handoffs/` and use
   evidence, glossary, knowledge check, and Phase 04 readiness
 - `docs/handoffs/phase-04-handoff.md` — Phase 04 landing, Bronze ingestion,
   lineage, idempotency, validation evidence, knowledge check, and Phase 05 readiness
+- `docs/handoffs/phase-05-handoff.md` — Phase 05 validation, canonicalization,
+  runtime recovery, idempotency evidence, knowledge check, and Phase 06 readiness
 
 ## New-chat kickoff prompt
 

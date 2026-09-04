@@ -6,16 +6,20 @@ risk analytics.
 
 ## Current milestone
 
-Phases 01 through 04 are complete.
+Phases 01 through 05 are complete.
 
-Phase 04 implemented deterministic Bronze ingestion for the approved portfolio
-fixture. The project now includes a managed Unity Catalog landing Volume,
-source and manifest fingerprints, source-aligned Bronze Delta tables, record-level
-lineage, immutable batch-attempt auditing, and safe duplicate reruns.
+Phase 05 implemented contract-aligned Silver processing for the controlled Bronze
+portfolio dataset. The project now casts preserved source strings into documented
+types, evaluates structural and business-quality rules, resolves duplicate and
+canonical versions deterministically, records outcomes and violations, gates
+publication, and maintains processing-run audit lineage.
 
-The project does not retrieve live market data or perform Silver cleaning yet.
-Dates, numbers, booleans, blank values, and other source representations remain
-unchanged strings in Bronze.
+Two typed and uniquely keyed portfolio records are canonical in Silver. A failed
+persistence attempt was preserved and linked to a successful recovery, and an
+identical reprocessing attempt accepted zero new records, classified both records as
+unchanged, and left the canonical count and SHA-256 fingerprint unchanged.
+
+The project does not retrieve live market data or calculate Gold analytics yet.
 
 ## Quick start
 
@@ -54,8 +58,10 @@ Useful commands:
 ├── contracts/                    # Machine-readable data contracts
 ├── data/                         # Tracked fixtures and ignored generated data
 ├── docs/                         # Learning guides, decisions, and handoffs
-├── notebooks/bronze/             # Git-backed Databricks ingestion notebook
-├── sql/                          # Version-controlled Databricks SQL
+├── notebooks/bronze/             # Git-backed Databricks Bronze ingestion
+├── notebooks/silver/             # Git-backed Databricks Silver processing
+├── sql/bronze/                   # Bronze object definitions and verification
+├── sql/silver/                   # Silver object definitions
 ├── src/market_risk_analysis/     # Installable Python application code
 ├── tests/                        # Automated behavior and structure checks
 ├── Makefile                      # Short developer commands
@@ -63,31 +69,35 @@ Useful commands:
 └── uv.lock                       # Resolved development dependencies
 ```
 
-## Phase 04 Bronze milestone
+## Phase 05 Silver milestone
 
-The persistent Databricks objects are:
+The persistent Silver Databricks objects are:
 
-- `workspace.devin_market_risk_dev.bronze_landing`
-- `workspace.devin_market_risk_dev.bronze_portfolios`
-- `workspace.devin_market_risk_dev.bronze_ingestion_batches`
+- `workspace.devin_market_risk_dev.silver_portfolios`
+- `workspace.devin_market_risk_dev.silver_processing_runs`
+- `workspace.devin_market_risk_dev.silver_portfolio_record_outcomes`
+- `workspace.devin_market_risk_dev.silver_data_quality_violations`
 
-The controlled portfolio fixture produced two Bronze records and one successful
-audit record. An identical rerun preserved the two portfolio records and added a
-`SKIPPED_DUPLICATE` audit record linked to the original batch.
+The controlled Bronze portfolio batch produced two canonical Silver portfolio rows
+and two nonfatal missing-inception-date warnings. The successful recovery run
+published the two records with status `SUCCEEDED_WITH_WARNINGS`. An identical
+reprocessing attempt classified both records as unchanged, published nothing, and
+left the canonical SHA-256 fingerprint unchanged.
 
 ## Project plan and learning path
 
 - [Project roadmap](docs/project-roadmap.md) defines the phases and exit gates.
 - [Progress tracker](docs/progress.md) records the current phase and evidence.
-- [Phase 04 handoff](docs/handoffs/phase-04-handoff.md) records the Bronze
-  implementation and Phase 05 readiness.
+- [Phase 05 handoff](docs/handoffs/phase-05-handoff.md) records the Silver
+  implementation, validation, recovery, idempotency, and Phase 06 readiness.
 - [Phase handoff template](docs/phase-handoff-template.md) defines the handoff
   structure.
 
 ## Current phase boundary
 
-The next phase is Phase 05 — Silver Quality and Canonical Data. Silver will cast,
-validate, standardize, and deduplicate source values while Bronze remains immutable.
+The next phase is Phase 06 — Gold Analytics Foundation. Gold will join trusted data
+at explicit grains and calculate documented market values, returns, P&L, and
+portfolio exposure measures.
 
 Live market-data retrieval, Gold risk calculations, Power BI work, and FastAPI
 development have not started.
