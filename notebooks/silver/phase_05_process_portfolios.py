@@ -2050,7 +2050,7 @@ if publish_allowed and accepted_count > 0:
     )
 
     (
-        canonical_delta_table.merge(
+        canonical_delta_table.alias("target").merge(
             canonical_publication_records.alias("source"),
             "target.portfolio_id = source.portfolio_id",
         )

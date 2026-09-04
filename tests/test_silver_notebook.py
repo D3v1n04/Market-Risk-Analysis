@@ -813,6 +813,12 @@ def test_silver_notebook_builds_canonical_publication_records() -> None:
 def test_silver_notebook_uses_controlled_delta_writes() -> None:
     source = _read_notebook()
     compact_source = re.sub(r"\s+", "", source)
+
+    assert (
+        'canonical_delta_table.alias("target").merge('
+        in compact_source
+    )
+
     normalized_source = " ".join(source.upper().split())
 
     assert "from delta.tables import DeltaTable" in source
@@ -879,8 +885,8 @@ def test_silver_notebook_uses_controlled_delta_writes() -> None:
         in compact_source
     )
 
-    canonical_merge_position = source.index(
-        "canonical_delta_table.merge("
+    canonical_merge_position = compact_source.index(
+        'canonical_delta_table.alias("target").merge('
     )
     processing_run_position = source.index(
         "processing_run_audit_records ="
