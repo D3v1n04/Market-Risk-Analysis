@@ -1,0 +1,225 @@
+contract_version: 1.0.0
+dataset: cash_balances
+dataset_class: derived_daily_observation
+description: Reconciled daily portfolio cash state used to calculate complete NAV and exposure ratios.
+grain: One row represents one portfolio's closing cash balance for one approved business date.
+
+primary_key:
+  - portfolio_id
+  - cash_date
+
+foreign_keys:
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [processing_run_id]
+    references: processing_runs.processing_run_id
+
+fields:
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+    description: Stable portfolio identifier.
+
+  - name: cash_date
+    type: DATE
+    nullable: false
+    description: Approved portfolio business date represented by the balance.
+
+  - name: prior_cash_date
+    type: DATE
+    nullable: true
+    description: Previous complete portfolio business date; null only for inception.
+
+  - name: position_input_date
+    type: DATE
+    nullable: false
+    description: Position date used for initialization or dividend calculations.
+
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+    description: Portfolio reporting currency.
+
+  - name: opening_cash_balance
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Inception residual cash or the previous complete closing balance.
+
+  - name: dividend_cash_flow
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Signed cash received by longs or owed by shorts on cash_date.
+
+  - name: closing_cash_balance
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Opening cash plus the approved dividend cash flow.
+
+  - name: corporate_action_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of validated cash-dividend events included in the row.
+
+  - name: input_position_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the ordered position inputs used by the calculation.
+
+  - name: input_corporate_action_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the ordered dividend-action inputs, including an empty set.
+
+  - name: processing_run_id
+    type: STRING
+    nullable: false
+    description: Silver processing run that produced this derived record.
+
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: Version of the approved cash derivation logic.
+
+  - name: derived_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+    description: UTC timestamp when the balance was derived.
+
+  - name: contract_version
+    type: STRING
+    nullable: false
+    description: Cash-balance contract version used by the derivation.
+
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: SHA-256 digest of the stable derived business fields.
+
+derivation:
+  amount_type: DECIMAL(38,16)
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 2
+
+  inception_opening_cash_formula: initial_nav - sum(signed_quantity * inception_close_price)
+  later_opening_cash_formula: prior_complete_closing_cash_balance
+  dividend_cash_flow_formula: sum(prior_signed_quantity * dividend_amount_per_share)
+  closing_cash_formula: opening_cash_balance + dividend_cash_flow
+
+  position_input_date_rule:
+    inception: cash_date
+    later_dates: previous_complete_portfolio_business_date
+
+  zero_dividend_behavior: Store zero only after complete validated corporate-action inputs prove that no dividend applies.
+  missing_input_behavior: Fail the processing run and withhold the canonical cash-balance row.
+  negative_balance_behavior: Preserve a valid negative cash balance; do not silently floor it to zero.
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_scale_16
+  fields:
+    - portfolio_id
+    - cash_date
+    - prior_cash_date
+    - position_input_date
+    - base_currency
+    - opening_cash_balance
+    - dividend_cash_flow
+    - closing_cash_balance
+    - corporate_action_count
+    - input_position_set_sha256
+    - input_corporate_action_set_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - processing_run_id
+    - derived_at_utc
+    - contract_version
+
+quality_rules:
+  - rule_id: CASH_BALANCE_BUSINESS_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Portfolio ID and cash date are unique together.
+
+  - rule_id: CASH_BALANCE_REFERENCES_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Portfolio and processing-run references resolve.
+
+  - rule_id: CASH_BALANCE_BASE_CURRENCY_MATCH
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Base currency is USD and matches the canonical portfolio.
+
+  - rule_id: CASH_BALANCE_DATE_SEQUENCE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Prior cash date is null only at inception and otherwise identifies the previous complete portfolio business date.
+
+  - rule_id: CASH_BALANCE_INCEPTION_RECONCILIATION
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Inception opening cash equals initial NAV minus total signed inception market value.
+
+  - rule_id: CASH_BALANCE_OPENING_CONTINUITY
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    tolerance: '0.0000000000000001'
+    assertion: After inception, opening cash equals the previous complete closing cash balance.
+
+  - rule_id: CASH_BALANCE_DIVIDEND_RECONCILIATION
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Dividend cash flow equals prior signed quantity multiplied by validated dividend per share and summed across applicable actions.
+
+  - rule_id: CASH_BALANCE_CLOSING_RECONCILIATION
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Closing cash equals opening cash plus dividend cash flow.
+
+  - rule_id: CASH_BALANCE_INPUT_COVERAGE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Required position, price, portfolio, calendar, and corporate-action inputs are complete before publication.
+
+  - rule_id: CASH_BALANCE_ACTION_COUNT_CONSISTENT
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Corporate action count equals the validated cash-dividend events included in the input action set.
+
+  - rule_id: CASH_BALANCE_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Cash balances are derived from deterministic trusted upstream inputs rather than supplied as source records.
+  deterministic_examples_planned: true
+  example_scope: Inception residual cash, long dividends received, short dividends owed, no-dividend days, missing prior cash, and incomplete input coverage.

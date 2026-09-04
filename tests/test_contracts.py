@@ -15,6 +15,7 @@ CONTRACT_DIR = PROJECT_ROOT / "contracts"
 FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 EXPECTED_CONTRACT_VERSIONS = {
+    "cash_balances": "1.0.0",
     "corporate_actions": "1.0.0",
     "daily_prices": "1.0.0",
     "data_quality_violations": "1.2.0",
@@ -903,3 +904,96 @@ def test_processing_run_contract_defines_complete_status_lifecycle() -> None:
         assert semantics[status]["completed_at_utc"] == "required"
 
     assert semantics["FAILED"]["published"] is False
+
+
+def test_cash_balance_contract_declares_reconciled_derivation() -> None:
+    contract = _load_contract("cash_balances")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    assert contract["contract_version"] == "1.0.0"
+    assert contract["dataset_class"] == "derived_daily_observation"
+    assert contract["primary_key"] == ["portfolio_id", "cash_date"]
+
+    expected_fields = {
+        "portfolio_id",
+        "cash_date",
+        "prior_cash_date",
+        "position_input_date",
+        "base_currency",
+        "opening_cash_balance",
+        "dividend_cash_flow",
+        "closing_cash_balance",
+        "corporate_action_count",
+        "input_position_set_sha256",
+        "input_corporate_action_set_sha256",
+        "processing_run_id",
+        "calculation_version",
+        "derived_at_utc",
+        "contract_version",
+        "record_hash",
+    }
+    assert set(fields) == expected_fields
+
+    for field_name in [
+        "opening_cash_balance",
+        "dividend_cash_flow",
+        "closing_cash_balance",
+    ]:
+        assert fields[field_name]["type"] == "DECIMAL(38,16)"
+        assert fields[field_name]["nullable"] is False
+        assert fields[field_name]["unit"] == "base_currency"
+
+    assert fields["base_currency"]["allowed_values"] == ["USD"]
+    assert fields["corporate_action_count"]["minimum_inclusive"] == 0
+
+    for field_name in [
+        "input_position_set_sha256",
+        "input_corporate_action_set_sha256",
+        "record_hash",
+    ]:
+        assert fields[field_name]["format"] == "^[0-9a-f]{64}$"
+
+    derivation = contract["derivation"]
+
+    assert derivation["amount_type"] == "DECIMAL(38,16)"
+    assert derivation["intermediate_rounding_allowed"] is False
+    assert derivation["presentation_rounding_scale"] == 2
+    assert derivation["inception_opening_cash_formula"] == (
+        "initial_nav - sum(signed_quantity * inception_close_price)"
+    )
+    assert derivation["later_opening_cash_formula"] == (
+        "prior_complete_closing_cash_balance"
+    )
+    assert derivation["dividend_cash_flow_formula"] == (
+        "sum(prior_signed_quantity * dividend_amount_per_share)"
+    )
+    assert derivation["closing_cash_formula"] == (
+        "opening_cash_balance + dividend_cash_flow"
+    )
+
+    expected_rule_ids = {
+        "CASH_BALANCE_BUSINESS_KEY_UNIQUE",
+        "CASH_BALANCE_REFERENCES_VALID",
+        "CASH_BALANCE_BASE_CURRENCY_MATCH",
+        "CASH_BALANCE_DATE_SEQUENCE",
+        "CASH_BALANCE_INCEPTION_RECONCILIATION",
+        "CASH_BALANCE_OPENING_CONTINUITY",
+        "CASH_BALANCE_DIVIDEND_RECONCILIATION",
+        "CASH_BALANCE_CLOSING_RECONCILIATION",
+        "CASH_BALANCE_INPUT_COVERAGE",
+        "CASH_BALANCE_ACTION_COUNT_CONSISTENT",
+        "CASH_BALANCE_RECORD_HASH_VALID",
+    }
+    assert set(rules) == expected_rule_ids
+    assert all(
+        rule["severity"] == "ERROR"
+        and rule["disposition"] == "FAIL_PROCESSING_RUN"
+        for rule in rules.values()
+    )
