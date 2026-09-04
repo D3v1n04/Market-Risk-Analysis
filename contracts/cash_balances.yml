@@ -1,4 +1,4 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: cash_balances
 dataset_class: derived_daily_observation
 description: Reconciled daily portfolio cash state used to calculate complete NAV and exposure ratios.
@@ -11,8 +11,8 @@ primary_key:
 foreign_keys:
   - fields: [portfolio_id]
     references: portfolios.portfolio_id
-  - fields: [processing_run_id]
-    references: processing_runs.processing_run_id
+  - fields: [derivation_run_id]
+    references: derivation_runs.derivation_run_id
 
 fields:
   - name: portfolio_id
@@ -77,10 +77,10 @@ fields:
     format: '^[0-9a-f]{64}$'
     description: Digest of the ordered dividend-action inputs, including an empty set.
 
-  - name: processing_run_id
+  - name: derivation_run_id
     type: STRING
     nullable: false
-    description: Silver processing run that produced this derived record.
+    description: Trusted-input derivation run that produced this cash-balance record.
 
   - name: calculation_version
     type: STRING
@@ -143,7 +143,7 @@ record_hash:
     - input_corporate_action_set_sha256
     - calculation_version
   excluded_mutable_fields:
-    - processing_run_id
+    - derivation_run_id
     - derived_at_utc
     - contract_version
 
@@ -158,7 +158,7 @@ quality_rules:
     scope: RECORD
     severity: ERROR
     disposition: FAIL_PROCESSING_RUN
-    assertion: Portfolio and processing-run references resolve.
+    assertion: Portfolio and derivation-run references resolve.
 
   - rule_id: CASH_BALANCE_BASE_CURRENCY_MATCH
     scope: RECORD

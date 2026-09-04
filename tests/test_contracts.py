@@ -15,15 +15,16 @@ CONTRACT_DIR = PROJECT_ROOT / "contracts"
 FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 EXPECTED_CONTRACT_VERSIONS = {
-    "cash_balances": "1.0.0",
+    "cash_balances": "1.1.0",
     "corporate_actions": "1.0.0",
     "daily_prices": "1.0.0",
     "data_quality_violations": "1.2.0",
+    "derivation_runs": "1.0.0",
     "ingestion_batches": "1.2.0",
     "instruments": "1.0.0",
     "portfolios": "1.1.0",
     "portfolio_record_outcomes": "1.0.0",
-    "positions": "1.0.0",
+    "positions": "1.1.0",
     "processing_runs": "1.0.0",
     "stress_scenario_shocks": "1.0.0",
     "stress_scenarios": "1.0.0",
@@ -917,7 +918,7 @@ def test_cash_balance_contract_declares_reconciled_derivation() -> None:
         for rule in contract["quality_rules"]
     }
 
-    assert contract["contract_version"] == "1.0.0"
+    assert contract["contract_version"] == "1.1.0"
     assert contract["dataset_class"] == "derived_daily_observation"
     assert contract["primary_key"] == ["portfolio_id", "cash_date"]
 
@@ -933,12 +934,20 @@ def test_cash_balance_contract_declares_reconciled_derivation() -> None:
         "corporate_action_count",
         "input_position_set_sha256",
         "input_corporate_action_set_sha256",
-        "processing_run_id",
+        "derivation_run_id",
         "calculation_version",
         "derived_at_utc",
         "contract_version",
         "record_hash",
     }
+    foreign_keys = {
+        tuple(foreign_key["fields"]): foreign_key["references"]
+        for foreign_key in contract["foreign_keys"]
+    }
+    assert (
+        foreign_keys[("derivation_run_id",)]
+        == "derivation_runs.derivation_run_id"
+    )
     assert set(fields) == expected_fields
 
     for field_name in [
@@ -997,3 +1006,327 @@ def test_cash_balance_contract_declares_reconciled_derivation() -> None:
         and rule["disposition"] == "FAIL_PROCESSING_RUN"
         for rule in rules.values()
     )
+
+
+def test_derivation_run_contract_declares_atomic_run_boundary() -> None:
+    contract = _load_contract("derivation_runs")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    assert contract["contract_version"] == "1.0.0"
+    assert contract["dataset_class"] == "operational_audit"
+    assert contract["primary_key"] == ["derivation_run_id"]
+    assert contract["natural_key"] == [
+        "output_dataset_name",
+        "portfolio_id",
+        "business_date",
+        "attempt_number",
+    ]
+
+    scope = contract["operation_scope"]
+    assert scope["input_trust_boundary"] == "TRUSTED_SILVER"
+    assert scope["output_layer"] == "SILVER"
+    assert scope["output_datasets_per_run"] == 1
+    assert scope["portfolios_per_run"] == 1
+    assert scope["business_dates_per_run"] == 1
+    assert scope["atomic_publication"] is True
+
+    expected_fields = {
+        "derivation_run_id",
+        "output_dataset_name",
+        "portfolio_id",
+        "business_date",
+        "attempt_number",
+        "reprocess_of_derivation_run_id",
+        "trigger_type",
+        "started_at_utc",
+        "completed_at_utc",
+        "status",
+        "input_dataset_names",
+        "input_record_count",
+        "input_manifest_sha256",
+        "expected_output_count",
+        "derived_output_count",
+        "canonical_before_count",
+        "canonical_after_count",
+        "canonical_before_sha256",
+        "canonical_after_sha256",
+        "published",
+        "published_at_utc",
+        "warning_count",
+        "failed_rule_ids",
+        "error_code",
+        "error_message",
+        "output_contract_version",
+        "calculation_version",
+        "code_version",
+        "contract_version",
+    }
+    assert set(fields) == expected_fields
+
+    assert fields["derivation_run_id"]["format"] == "UUID"
+    assert fields["output_dataset_name"]["allowed_values"] == [
+        "POSITIONS",
+        "CASH_BALANCES",
+    ]
+    assert fields["attempt_number"]["minimum_inclusive"] == 1
+    assert fields["input_dataset_names"]["type"] == "ARRAY<STRING>"
+    assert fields["failed_rule_ids"]["type"] == "ARRAY<STRING>"
+
+    count_fields = [
+        "input_record_count",
+        "expected_output_count",
+        "derived_output_count",
+        "canonical_before_count",
+        "canonical_after_count",
+        "warning_count",
+    ]
+    for field_name in count_fields:
+        assert fields[field_name]["type"] == "BIGINT"
+        assert fields[field_name]["nullable"] is False
+
+    for field_name in [
+        "input_manifest_sha256",
+        "canonical_before_sha256",
+        "canonical_after_sha256",
+    ]:
+        assert fields[field_name]["format"] == "^[0-9a-f]{64}$"
+
+    foreign_keys = {
+        tuple(foreign_key["fields"]): foreign_key["references"]
+        for foreign_key in contract["foreign_keys"]
+    }
+    assert foreign_keys[("portfolio_id",)] == "portfolios.portfolio_id"
+    assert (
+        foreign_keys[("reprocess_of_derivation_run_id",)]
+        == "derivation_runs.derivation_run_id"
+    )
+
+    attempt_policy = contract["attempt_policy"]
+    assert attempt_policy["first_attempt"]["attempt_number"] == 1
+    assert (
+        attempt_policy["first_attempt"][
+            "reprocess_of_derivation_run_id"
+        ]
+        == "must_be_null"
+    )
+    assert attempt_policy["create_new_derivation_run_id"] is True
+    assert attempt_policy["prohibit_overwrite"] is True
+
+    count_policy = contract["output_count_policy"]
+    assert (
+        count_policy["CASH_BALANCES"]["expected_output_count"]
+        == 1
+    )
+    assert count_policy["successful_run_requirement"] == (
+        "derived_output_count equals expected_output_count."
+    )
+    assert count_policy["incomplete_output_behavior"] == (
+        "Fail the derivation run and publish no partial partition."
+    )
+
+    publication = contract["publication_policy"]
+    assert publication["mode"] == "ATOMIC_PORTFOLIO_DATE_PARTITION"
+    assert publication["partition_key"] == [
+        "output_dataset_name",
+        "portfolio_id",
+        "business_date",
+    ]
+    assert publication["failed_run_publishes"] is False
+    assert (
+        publication["preserve_last_good_partition_on_failure"]
+        is True
+    )
+    assert publication["no_change_run_may_skip_publication"] is True
+
+    expected_rule_ids = {
+        "DERIVATION_RUN_GRAIN_UNIQUE",
+        "DERIVATION_RUN_REFERENCES_VALID",
+        "DERIVATION_RUN_INPUT_MANIFEST_VALID",
+        "DERIVATION_RUN_ATTEMPT_CHAIN_VALID",
+        "DERIVATION_RUN_TIMESTAMP_SEQUENCE",
+        "DERIVATION_RUN_STATUS_CONSISTENT",
+        "DERIVATION_RUN_BUSINESS_DATE_VALID",
+        "DERIVATION_RUN_OUTPUT_COUNT_RECONCILIATION",
+        "DERIVATION_RUN_ATOMIC_PUBLICATION",
+        "DERIVATION_RUN_FAILURE_PRESERVES_CANONICAL",
+        "DERIVATION_RUN_VERSION_FORMATS_VALID",
+        "DERIVATION_RUN_ERROR_SANITIZED",
+    }
+    assert set(rules) == expected_rule_ids
+    assert all(
+        rule["severity"] == "ERROR"
+        and rule["disposition"] == "FAIL_DERIVATION_RUN"
+        for rule in rules.values()
+    )
+
+
+def test_position_contract_declares_atomic_signed_derivation() -> None:
+    contract = _load_contract("positions")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    assert contract["contract_version"] == "1.1.0"
+    assert contract["dataset_class"] == "derived_daily_observation"
+    assert contract["primary_key"] == [
+        "portfolio_id",
+        "instrument_id",
+        "position_date",
+    ]
+
+    expected_fields = {
+        "portfolio_id",
+        "instrument_id",
+        "position_date",
+        "signed_quantity",
+        "position_basis",
+        "allocation_effective_from",
+        "prior_position_date",
+        "input_allocation_record_sha256",
+        "input_price_record_sha256",
+        "input_prior_position_record_sha256",
+        "input_corporate_action_set_sha256",
+        "derivation_run_id",
+        "calculation_version",
+        "derived_at_utc",
+        "contract_version",
+        "record_hash",
+    }
+    assert set(fields) == expected_fields
+
+    assert fields["signed_quantity"]["type"] == "DECIMAL(38,16)"
+    assert fields["signed_quantity"]["nullable"] is False
+    assert fields["signed_quantity"]["unit"] == "shares"
+
+    assert fields["position_basis"]["allowed_values"] == [
+        "INITIAL_ALLOCATION",
+        "BUY_AND_HOLD_CARRY_FORWARD",
+        "SPLIT_ADJUSTED_CARRY_FORWARD",
+    ]
+
+    assert fields["prior_position_date"]["nullable"] == "conditional"
+    assert (
+        fields["input_price_record_sha256"]["nullable"]
+        == "conditional"
+    )
+    assert (
+        fields["input_prior_position_record_sha256"]["nullable"]
+        == "conditional"
+    )
+
+    for field_name in [
+        "input_allocation_record_sha256",
+        "input_price_record_sha256",
+        "input_prior_position_record_sha256",
+        "input_corporate_action_set_sha256",
+        "record_hash",
+    ]:
+        assert fields[field_name]["format"] == "^[0-9a-f]{64}$"
+
+    foreign_keys = {
+        tuple(foreign_key["fields"]): foreign_key["references"]
+        for foreign_key in contract["foreign_keys"]
+    }
+    assert (
+        foreign_keys[("derivation_run_id",)]
+        == "derivation_runs.derivation_run_id"
+    )
+
+    derivation = contract["derivation"]
+    assert derivation["quantity_type"] == "DECIMAL(38,16)"
+    assert derivation["intermediate_rounding_allowed"] is False
+    assert derivation["presentation_rounding_scale"] == 8
+    assert derivation["fractional_shares_allowed"] is True
+
+    assert derivation["initial_quantity_formula"] == (
+        "target_weight * initial_nav / "
+        "canonical_inception_close_price"
+    )
+    assert derivation["ordinary_carry_forward_formula"] == (
+        "prior_signed_quantity"
+    )
+    assert derivation["split_carry_forward_formula"] == (
+        "prior_signed_quantity * product(applicable_split_ratios)"
+    )
+    assert derivation["dividend_quantity_behavior"] == (
+        "Cash dividends do not change signed quantity."
+    )
+
+    hash_fields = contract["record_hash"]["fields"]
+    assert "signed_quantity" in hash_fields
+    assert "quantity" not in hash_fields
+    assert contract["record_hash"]["excluded_mutable_fields"] == [
+        "derivation_run_id",
+        "derived_at_utc",
+        "contract_version",
+    ]
+
+    expected_rule_ids = {
+        "POSITION_BUSINESS_KEY_UNIQUE",
+        "POSITION_REFERENCES_VALID",
+        "POSITION_NONZERO_QUANTITY",
+        "POSITION_STRATEGY_SIGN",
+        "POSITION_VALID_SESSION",
+        "POSITION_DAILY_COVERAGE",
+        "POSITION_INPUT_COVERAGE",
+        "POSITION_DATE_SEQUENCE",
+        "POSITION_INCEPTION_RECONCILIATION",
+        "POSITION_BUY_AND_HOLD_CONTINUITY",
+        "POSITION_SPLIT_RECONCILIATION",
+        "POSITION_DIVIDEND_QUANTITY_UNCHANGED",
+        "POSITION_RECORD_HASH_VALID",
+    }
+    assert set(rules) == expected_rule_ids
+    assert all(
+        rule["severity"] == "ERROR"
+        and rule["disposition"] == "FAIL_DERIVATION_RUN"
+        for rule in rules.values()
+    )
+
+
+def test_derived_silver_contracts_use_derivation_run_lineage() -> None:
+    expected_outputs = {
+        "positions": "POSITIONS",
+        "cash_balances": "CASH_BALANCES",
+    }
+
+    derivation_run = _load_contract("derivation_runs")
+    run_fields = {
+        field["name"]: field
+        for field in derivation_run["fields"]
+    }
+    allowed_outputs = set(
+        run_fields["output_dataset_name"]["allowed_values"]
+    )
+
+    for dataset, output_name in expected_outputs.items():
+        contract = _load_contract(dataset)
+        field_names = {
+            field["name"]
+            for field in contract["fields"]
+        }
+        foreign_keys = {
+            tuple(foreign_key["fields"]): foreign_key["references"]
+            for foreign_key in contract["foreign_keys"]
+        }
+
+        assert "derivation_run_id" in field_names
+        assert "processing_run_id" not in field_names
+        assert "batch_id" not in field_names
+        assert (
+            foreign_keys[("derivation_run_id",)]
+            == "derivation_runs.derivation_run_id"
+        )
+        assert output_name in allowed_outputs

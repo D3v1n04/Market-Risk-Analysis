@@ -1,0 +1,377 @@
+contract_version: 1.0.0
+dataset: derivation_runs
+dataset_class: operational_audit
+description: Immutable audit evidence for each attempt to derive one trusted Silver output dataset for one portfolio and one business date.
+grain: One row represents one attempt to derive one output dataset for one portfolio and one business date.
+
+operation_scope:
+  input_trust_boundary: TRUSTED_SILVER
+  output_layer: SILVER
+  output_datasets_per_run: 1
+  portfolios_per_run: 1
+  business_dates_per_run: 1
+  atomic_publication: true
+
+primary_key:
+  - derivation_run_id
+
+natural_key:
+  - output_dataset_name
+  - portfolio_id
+  - business_date
+  - attempt_number
+
+foreign_keys:
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [reprocess_of_derivation_run_id]
+    references: derivation_runs.derivation_run_id
+    nullable: true
+
+fields:
+  - name: derivation_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+    description: Unique immutable identifier for this derivation attempt.
+
+  - name: output_dataset_name
+    type: STRING
+    nullable: false
+    allowed_values: [POSITIONS, CASH_BALANCES]
+    description: Derived Silver dataset produced by this run.
+
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+    description: Portfolio processed independently by this run.
+
+  - name: business_date
+    type: DATE
+    nullable: false
+    description: Portfolio business date represented by the derived output partition.
+
+  - name: attempt_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+    description: Ordered attempt number for the same output dataset, portfolio, and business date.
+
+  - name: reprocess_of_derivation_run_id
+    type: STRING
+    nullable: true
+    format: UUID
+    description: Previous derivation run retried or recalculated by this attempt.
+
+  - name: trigger_type
+    type: STRING
+    nullable: false
+    allowed_values: [MANUAL, SCHEDULED, RECOVERY]
+
+  - name: started_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+
+  - name: completed_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+
+  - name: status
+    type: STRING
+    nullable: false
+    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, FAILED]
+
+  - name: input_dataset_names
+    type: ARRAY<STRING>
+    nullable: false
+    description: Sorted unique names of all trusted datasets represented in the input manifest.
+
+  - name: input_record_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Total trusted records represented across all input-manifest entries.
+
+  - name: input_manifest_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the ordered dataset-level input manifest used by this run.
+
+  - name: expected_output_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+    description: Required complete output count for this dataset, portfolio, and date.
+
+  - name: derived_output_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Number of output candidates derived before atomic publication.
+
+  - name: canonical_before_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Canonical records in the target portfolio-date partition before this run.
+
+  - name: canonical_after_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+    description: Canonical records in the target portfolio-date partition after this run.
+
+  - name: canonical_before_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the prior canonical partition; null when no prior partition exists.
+
+  - name: canonical_after_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the canonical partition visible after this run.
+
+  - name: published
+    type: BOOLEAN
+    nullable: false
+    description: Whether this run atomically changed the canonical target partition.
+
+  - name: published_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+
+  - name: failed_rule_ids
+    type: ARRAY<STRING>
+    nullable: false
+    description: Failed derivation rules; an empty array means no rule failed.
+
+  - name: error_code
+    type: STRING
+    nullable: true
+    description: Machine-readable code for a terminal technical failure.
+
+  - name: error_message
+    type: STRING
+    nullable: true
+    description: Sanitized diagnostic containing no credentials, tokens, or secret-bearing URLs.
+
+  - name: output_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: Contract version governing the derived output.
+
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: Version of the approved derivation formulas.
+
+  - name: code_version
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{7,40}$'
+    description: Git commit SHA identifying the derivation code.
+
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+input_manifest_policy:
+  dataset_names_sorted: true
+  dataset_names_unique: true
+  allowed_dataset_names:
+    - PORTFOLIOS
+    - INSTRUMENTS
+    - TARGET_ALLOCATIONS
+    - DAILY_PRICES
+    - CORPORATE_ACTIONS
+    - TRADING_CALENDAR
+    - POSITIONS
+    - CASH_BALANCES
+  manifest_entry_fields:
+    - dataset_name
+    - dataset_contract_version
+    - snapshot_reference
+    - selection_scope
+    - record_count
+    - record_set_sha256
+  manifest_order:
+    - dataset_name
+  hash_algorithm: SHA-256
+  empty_record_sets_allowed: true
+  empty_record_set_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  record_count_equation: input_record_count = sum(manifest entry record_count)
+
+attempt_policy:
+  first_attempt:
+    attempt_number: 1
+    reprocess_of_derivation_run_id: must_be_null
+  reprocess:
+    output_dataset_name: same_as_prior_run
+    portfolio_id: same_as_prior_run
+    business_date: same_as_prior_run
+    attempt_number: one_greater_than_prior_attempt
+    reprocess_of_derivation_run_id: required
+  create_new_derivation_run_id: true
+  prohibit_overwrite: true
+
+output_count_policy:
+  POSITIONS:
+    expected_output_count: Count of active allocation rows effective for the portfolio on the business date.
+  CASH_BALANCES:
+    expected_output_count: 1
+  successful_run_requirement: derived_output_count equals expected_output_count.
+  incomplete_output_behavior: Fail the derivation run and publish no partial partition.
+
+publication_policy:
+  mode: ATOMIC_PORTFOLIO_DATE_PARTITION
+  partition_key:
+    - output_dataset_name
+    - portfolio_id
+    - business_date
+  publish_allowed_statuses:
+    - SUCCEEDED
+    - SUCCEEDED_WITH_WARNINGS
+  failed_run_publishes: false
+  preserve_last_good_partition_on_failure: true
+  no_change_run_may_skip_publication: true
+
+  published_true:
+    published_at_utc: required
+    canonical_after_count: must_equal_expected_output_count
+    canonical_after_sha256: required
+
+  published_false:
+    published_at_utc: must_be_null
+
+  failed_partition:
+    canonical_after_count: must_equal_canonical_before_count
+    canonical_after_sha256: must_equal_canonical_before_sha256
+
+  unchanged_success:
+    published: false
+    canonical_after_count: must_equal_canonical_before_count
+    canonical_after_sha256: must_equal_canonical_before_sha256
+
+status_semantics:
+  PENDING:
+    terminal: false
+    completed_at_utc: must_be_null
+    published: false
+
+  RUNNING:
+    terminal: false
+    completed_at_utc: must_be_null
+    published: false
+
+  SUCCEEDED:
+    terminal: true
+    completed_at_utc: required
+    warning_count: 0
+    failed_rule_ids: must_be_empty
+    output_complete: true
+
+  SUCCEEDED_WITH_WARNINGS:
+    terminal: true
+    completed_at_utc: required
+    warning_count: greater_than_zero
+    failed_rule_ids: must_be_empty
+    output_complete: true
+
+  FAILED:
+    terminal: true
+    completed_at_utc: required
+    published: false
+    failure_evidence: A failed rule ID or sanitized technical error is required.
+
+quality_rules:
+  - rule_id: DERIVATION_RUN_GRAIN_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Output dataset, portfolio, business date, and attempt number are unique together.
+
+  - rule_id: DERIVATION_RUN_REFERENCES_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Portfolio and optional prior derivation-run references resolve.
+
+  - rule_id: DERIVATION_RUN_INPUT_MANIFEST_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Input names, counts, versions, snapshots, record-set hashes, and overall manifest hash reconcile deterministically.
+
+  - rule_id: DERIVATION_RUN_ATTEMPT_CHAIN_VALID
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Reprocessing preserves output dataset, portfolio, and business date while incrementing the attempt number and creating a new run ID.
+
+  - rule_id: DERIVATION_RUN_TIMESTAMP_SEQUENCE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Completion and publication timestamps follow the approved status lifecycle and do not precede the start timestamp.
+
+  - rule_id: DERIVATION_RUN_STATUS_CONSISTENT
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Status, completion, warnings, failed rules, error fields, and publication state agree.
+
+  - rule_id: DERIVATION_RUN_BUSINESS_DATE_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Business date is an approved complete portfolio business date supported by the trusted trading calendar.
+
+  - rule_id: DERIVATION_RUN_OUTPUT_COUNT_RECONCILIATION
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: A successful position run has all effective allocations and a successful cash run has exactly one output record.
+
+  - rule_id: DERIVATION_RUN_ATOMIC_PUBLICATION
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: The complete portfolio-date partition publishes together or no candidate records publish.
+
+  - rule_id: DERIVATION_RUN_FAILURE_PRESERVES_CANONICAL
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: A failed run leaves the prior canonical count and hash unchanged.
+
+  - rule_id: DERIVATION_RUN_VERSION_FORMATS_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Output contract, calculation, code, and audit contract versions use their approved formats.
+
+  - rule_id: DERIVATION_RUN_ERROR_SANITIZED
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Technical diagnostics contain no credentials, tokens, or secret-bearing URLs.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Derivation runs are generated as immutable operational audit evidence.
+  deterministic_examples_planned: true
+  example_scope: Successful publication, failed incomplete output, unchanged rerun, warning success, technical failure, and portfolio-isolated failure.

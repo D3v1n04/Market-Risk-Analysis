@@ -1,8 +1,8 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: positions
 dataset_class: derived_daily_observation
-description: Split-adjusted daily position quantities used for valuation and exposure analysis.
-grain: One row represents one portfolio's quantity in one instrument at the close of one business date.
+description: Split-adjusted daily signed portfolio quantities used for valuation and exposure analysis.
+grain: One row represents one portfolio's signed quantity in one instrument at the close of one approved business date.
 
 primary_key:
   - portfolio_id
@@ -16,118 +16,261 @@ foreign_keys:
     references: instruments.instrument_id
   - fields: [portfolio_id, instrument_id, allocation_effective_from]
     references: target_allocations.[portfolio_id, instrument_id, effective_from]
-  - fields: [batch_id]
-    references: ingestion_batches.batch_id
+  - fields: [derivation_run_id]
+    references: derivation_runs.derivation_run_id
 
 fields:
   - name: portfolio_id
     type: STRING
     nullable: false
     description: Stable portfolio identifier.
+
   - name: instrument_id
     type: STRING
     nullable: false
     description: Stable instrument identifier.
+
   - name: position_date
     type: DATE
     nullable: false
-    description: Closing business date represented by the snapshot.
-  - name: quantity
-    type: DECIMAL(24,8)
+    description: Closing portfolio business date represented by the position.
+
+  - name: signed_quantity
+    type: DECIMAL(38,16)
     nullable: false
-    description: Signed split-adjusted shares; positive is long and negative is short.
+    unit: shares
+    description: Positive shares represent a long position and negative shares represent a short position.
+
   - name: position_basis
     type: STRING
     nullable: false
-    allowed_values: [INITIAL_ALLOCATION, SPLIT_ADJUSTED_CARRY_FORWARD]
+    allowed_values:
+      - INITIAL_ALLOCATION
+      - BUY_AND_HOLD_CARRY_FORWARD
+      - SPLIT_ADJUSTED_CARRY_FORWARD
+
   - name: allocation_effective_from
     type: DATE
     nullable: false
-    description: Allocation version used to initialize the position.
-  - name: source_record_id
+    description: Allocation version governing the position.
+
+  - name: prior_position_date
+    type: DATE
+    nullable: conditional
+    description: Previous complete portfolio business date; null only for an inception position.
+
+  - name: input_allocation_record_sha256
     type: STRING
     nullable: false
-    description: Deterministic identifier for the derived snapshot.
-  - name: batch_id
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the trusted allocation record governing this position.
+
+  - name: input_price_record_sha256
+    type: STRING
+    nullable: conditional
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the trusted inception price record; required only for initial allocation.
+
+  - name: input_prior_position_record_sha256
+    type: STRING
+    nullable: conditional
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the prior canonical position; required after inception.
+
+  - name: input_corporate_action_set_sha256
     type: STRING
     nullable: false
-    description: Batch that created the position snapshot.
+    format: '^[0-9a-f]{64}$'
+    description: Digest of the applicable trusted split-action set, including an empty set.
+
+  - name: derivation_run_id
+    type: STRING
+    nullable: false
+    description: Trusted-input derivation run that produced this position.
+
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    description: Version of the approved position derivation logic.
+
   - name: derived_at_utc
     type: TIMESTAMP
     nullable: false
     timezone: UTC
+
   - name: contract_version
     type: STRING
     nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
   - name: record_hash
     type: STRING
     nullable: false
     format: '^[0-9a-f]{64}$'
+
+conditional_fields:
+  inception:
+    when: position_basis is INITIAL_ALLOCATION
+    required:
+      input_price_record_sha256: valid_sha256
+    must_be_null:
+      - prior_position_date
+      - input_prior_position_record_sha256
+
+  ordinary_carry_forward:
+    when: position_basis is BUY_AND_HOLD_CARRY_FORWARD
+    required:
+      prior_position_date: previous_complete_portfolio_business_date
+      input_prior_position_record_sha256: valid_sha256
+    must_be_null:
+      - input_price_record_sha256
+    required_action_set: empty
+
+  split_adjusted_carry_forward:
+    when: position_basis is SPLIT_ADJUSTED_CARRY_FORWARD
+    required:
+      prior_position_date: previous_complete_portfolio_business_date
+      input_prior_position_record_sha256: valid_sha256
+    must_be_null:
+      - input_price_record_sha256
+    required_action_set: one_or_more_validated_stock_splits
 
 record_hash:
   algorithm: SHA-256
   encoding: UTF-8
   delimiter: '|'
   null_token: <NULL>
-  decimal_format: fixed_scale
-  timestamp_format: ISO-8601-UTC
+  decimal_format: fixed_scale_16
   fields:
     - portfolio_id
     - instrument_id
     - position_date
-    - quantity
+    - signed_quantity
     - position_basis
     - allocation_effective_from
-    - source_record_id
+    - prior_position_date
+    - input_allocation_record_sha256
+    - input_price_record_sha256
+    - input_prior_position_record_sha256
+    - input_corporate_action_set_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - derivation_run_id
+    - derived_at_utc
     - contract_version
 
 derivation:
-  initial_quantity_formula: target_weight * initial_nav / validated_raw_close_price
-  split_carry_forward_formula: prior_quantity * split_ratio
-  rounding_scale: 8
+  quantity_type: DECIMAL(38,16)
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 8
   fractional_shares_allowed: true
-  rationale: Fractional shares minimize allocation drift and keep deterministic target reconciliation.
+
+  initial_quantity_formula: target_weight * initial_nav / canonical_inception_close_price
+  ordinary_carry_forward_formula: prior_signed_quantity
+  split_carry_forward_formula: prior_signed_quantity * product(applicable_split_ratios)
+
+  dividend_quantity_behavior: Cash dividends do not change signed quantity.
+  missing_input_behavior: Fail the derivation run and withhold the complete portfolio-date position partition.
+  zero_quantity_behavior: Zero positions are invalid because active allocation weights must be nonzero.
+
+conditional_derivation:
+  INITIAL_ALLOCATION:
+    prior_position_required: false
+    inception_price_required: true
+
+  BUY_AND_HOLD_CARRY_FORWARD:
+    prior_position_required: true
+    split_action_count: 0
+
+  SPLIT_ADJUSTED_CARRY_FORWARD:
+    prior_position_required: true
+    split_action_count: greater_than_zero
 
 quality_rules:
   - rule_id: POSITION_BUSINESS_KEY_UNIQUE
+    scope: DATASET
     severity: ERROR
-    disposition: REJECT
-    assertion: portfolio_id, instrument_id, and position_date are unique together.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Portfolio, instrument, and position date are unique together.
+
   - rule_id: POSITION_REFERENCES_VALID
+    scope: RECORD
     severity: ERROR
-    disposition: QUARANTINE
-    assertion: Portfolio, instrument, allocation, and batch references resolve.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Portfolio, instrument, allocation, and derivation-run references resolve.
+
   - rule_id: POSITION_NONZERO_QUANTITY
+    scope: RECORD
     severity: ERROR
-    disposition: REJECT
-    assertion: quantity is not zero; zero positions are omitted.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Signed quantity is not zero.
+
   - rule_id: POSITION_STRATEGY_SIGN
+    scope: RECORD
     severity: ERROR
-    disposition: REJECT
-    assertion: Long-only quantities are positive and long-short signs match approved allocations.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Long-only quantities are positive and long-short signs match the approved signed allocations.
+
   - rule_id: POSITION_VALID_SESSION
+    scope: RECORD
     severity: ERROR
-    disposition: REJECT
-    assertion: position_date is an expected trading session for the instrument.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Position date is an approved complete portfolio business date.
+
   - rule_id: POSITION_DAILY_COVERAGE
+    scope: DATASET
     severity: ERROR
-    disposition: PARTIAL_BATCH
-    assertion: Each active portfolio has all 15 required instrument snapshots for a complete date.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: The portfolio-date partition contains exactly one position for every active allocation effective on that date.
+
+  - rule_id: POSITION_INPUT_COVERAGE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Required portfolio, allocation, calendar, inception price, prior position, and corporate-action inputs are complete before publication.
+
+  - rule_id: POSITION_DATE_SEQUENCE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Prior position date is null only at inception and otherwise identifies the previous complete portfolio business date.
+
+  - rule_id: POSITION_INCEPTION_RECONCILIATION
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Initial signed quantity equals target weight multiplied by initial NAV and divided by the trusted inception close price.
+
   - rule_id: POSITION_BUY_AND_HOLD_CONTINUITY
+    scope: RECORD
     severity: ERROR
-    disposition: QUARANTINE
-    assertion: Quantity is unchanged between sessions unless a documented split applies.
+    disposition: FAIL_DERIVATION_RUN
+    tolerance: '0.0000000000000001'
+    assertion: On a date without a split, signed quantity equals the previous complete signed quantity.
+
   - rule_id: POSITION_SPLIT_RECONCILIATION
+    scope: RECORD
     severity: ERROR
-    disposition: QUARANTINE
-    assertion: Post-split quantity equals prior quantity multiplied by the reviewed split ratio.
+    disposition: FAIL_DERIVATION_RUN
+    tolerance: '0.0000000000000001'
+    assertion: On a split date, signed quantity equals prior signed quantity multiplied by all applicable validated split ratios.
+
+  - rule_id: POSITION_DIVIDEND_QUANTITY_UNCHANGED
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_DERIVATION_RUN
+    assertion: A cash dividend affects portfolio cash but never changes signed position quantity.
+
   - rule_id: POSITION_RECORD_HASH_VALID
+    scope: RECORD
     severity: ERROR
-    disposition: REJECT
-    assertion: record_hash matches the canonical SHA-256 calculation.
+    disposition: FAIL_DERIVATION_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.
 
 fixture_policy:
   canonical_fixture: null
-  reason: Actual quantities depend on validated starting prices that are unavailable in Phase 03.
+  reason: Position records are derived from deterministic trusted inputs rather than supplied as source records.
   deterministic_examples_planned: true
-  example_scope: Small pass/fail records for sign, zero quantity, duplicate key, coverage, and split behavior.
+  example_scope: Long and short inception, ordinary carry-forward, split-adjusted carry-forward, dividends, missing prior positions, incomplete coverage, and portfolio-isolated failure.
