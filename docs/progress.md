@@ -2,17 +2,20 @@
 
 ## Current position
 
-- **Current phase:** Phase 05 — Silver Quality and Canonical Data
-- **Status:** Complete
-- **Next gate:** Complete the Phase 05 documentation commit, synchronize the branch,
-  and start Phase 06 — Gold Analytics Foundation
+- **Current phase:** Phase 06 — Gold Analytics Foundation
+- **Status:** In progress
+- **Next gate:** Complete Phase 6A trusted analytics input enablement before
+  creating Gold calculations
 - **Last updated:** 2026-09-04
 
-Phase 05 converted the controlled Bronze portfolio batch into two typed, uniquely
-keyed, active canonical Silver records while preserving Bronze. One partially
-committed failed attempt was recovered auditably, and an unchanged rerun left the
-canonical count and fingerprint unchanged. The learner passed the Phase 05
-explain-back. Gold analytics and live-data retrieval have not begun.
+Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
+Databricks baselines were verified: two Bronze tables, four Silver tables, two
+canonical portfolios, three Silver processing runs, and no Gold tables.
+
+The dependency review proved that canonical portfolios alone cannot support honest
+Gold calculations. Phase 6A will therefore create the approved deterministic
+instrument, allocation, calendar, price, corporate-action, position, and cash
+dependencies before Phase 6B implements Gold metrics.
 
 ## Status definitions
 
@@ -34,7 +37,7 @@ explain-back. Gold analytics and live-data retrieval have not begun.
 | 03 | Risk Requirements and Data Contracts | Complete | `9cec282` — completed handoff |
 | 04 | Bronze Ingestion | Complete | `bf08e36` — ingestion verification |
 | 05 | Silver Quality and Canonical Data | Complete | `0d09a6a` — canonical merge target alias fix |
-| 06 | Gold Analytics Foundation | Not started | — |
+| 06 | Gold Analytics Foundation | In progress | Not committed |
 | 07 | Risk Measures and Validation | Not started | — |
 | 08 | SQL Serving and DBeaver QA | Not started | — |
 | 09 | Power BI Semantic Model | Not started | — |

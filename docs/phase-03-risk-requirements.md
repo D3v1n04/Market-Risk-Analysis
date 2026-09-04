@@ -105,16 +105,20 @@ of 0.000001.
 - Target gross exposure: 160%
 - Target net exposure: 100%
 
+The version-controlled fixture in
+`data/fixtures/target_allocations.csv` is the authoritative instrument-level
+allocation definition for this portfolio.
+
 | Instrument | Target weight | Instrument | Target weight |
 | --- | ---: | --- | ---: |
-| AAPL | 24.7% | MSFT | 24.7% |
-| GOOGL | -5.7% | NVDA | -5.7% |
-| AVGO | 15.6% | TSM | -3.6% |
-| WMT | 16.9% | AMZN | -3.9% |
-| LLY | 14.3% | UNH | -3.3% |
-| JPM | 15.6% | BRK.B | -3.6% |
-| XOM | 9.1% | LMT | 9.1% |
-| TSLA | -4.2% |  |  |
+| NVDA | 14.82% | AAPL | 14.82% |
+| GOOGL | 14.82% | MSFT | 14.82% |
+| TSM | 9.36% | AVGO | 9.36% |
+| AMZN | 10.14% | WMT | -10.00% |
+| LLY | 8.58% | UNH | -10.00% |
+| JPM | 9.36% | BRK.B | 9.36% |
+| XOM | 7.28% | TSLA | -10.00% |
+| LMT | 7.28% |  |  |
 
 Positive weights must total 1.300000, negative weights must total -0.300000, gross
 weights must total 1.600000, and signed weights must total 1.000000. Each check uses
