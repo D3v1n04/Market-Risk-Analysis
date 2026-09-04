@@ -317,17 +317,17 @@ def test_silver_notebook_assigns_one_final_outcome_per_record() -> None:
         in compact_upper_source
     )
 
-    rejected_position = normalized_source.index(
-        "WHEN COALESCE(VIOLATION_ERROR_COUNT, 0) > 0"
+    rejected_position = compact_upper_source.index(
+        "WHENCOALESCE(SUMMARY.VIOLATION_ERROR_COUNT,0)>0"
     )
-    conflict_position = normalized_source.index(
-        "WHEN SAME_BATCH_OUTCOME = 'REJECTED'"
+    conflict_position = compact_upper_source.index(
+        "WHENCANDIDATE.SAME_BATCH_OUTCOME='REJECTED'"
     )
-    duplicate_position = normalized_source.index(
-        "WHEN SAME_BATCH_OUTCOME = 'DEDUPLICATED'"
+    duplicate_position = compact_upper_source.index(
+        "WHENCANDIDATE.SAME_BATCH_OUTCOME='DEDUPLICATED'"
     )
-    comparison_position = normalized_source.index(
-        "ELSE CANONICAL_COMPARISON_OUTCOME"
+    comparison_position = compact_upper_source.index(
+        "ELSECOMPARISON.CANONICAL_COMPARISON_OUTCOME"
     )
 
     assert rejected_position < conflict_position

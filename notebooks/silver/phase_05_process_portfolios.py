@@ -1384,13 +1384,16 @@ final_record_outcomes = spark.sql(
         candidate.same_batch_outcome,
         comparison.canonical_comparison_outcome,
         CASE
-            WHEN COALESCE(violation_error_count, 0) > 0
+            WHEN COALESCE(
+                summary.violation_error_count,
+                0
+            ) > 0
                 THEN 'REJECTED'
-            WHEN same_batch_outcome = 'REJECTED'
+            WHEN candidate.same_batch_outcome = 'REJECTED'
                 THEN 'REJECTED'
-            WHEN same_batch_outcome = 'DEDUPLICATED'
+            WHEN candidate.same_batch_outcome = 'DEDUPLICATED'
                 THEN 'DEDUPLICATED'
-            ELSE canonical_comparison_outcome
+            ELSE comparison.canonical_comparison_outcome
         END AS final_outcome
     FROM phase_05_same_batch_portfolio_candidates AS candidate
     LEFT JOIN phase_05_canonical_portfolio_comparisons AS comparison
