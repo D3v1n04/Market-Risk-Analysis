@@ -4,6 +4,7 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -13,6 +14,7 @@ from market_risk_analysis.config import Settings
 
 MANIFEST_VERSION = "1.0.0"
 HASH_CHUNK_SIZE = 1024 * 1024
+FULL_GIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 def calculate_sha256(path: Path) -> str:
@@ -56,6 +58,48 @@ def inspect_csv(path: Path) -> tuple[list[str], int]:
     return header, record_count
 
 
+def _build_generation_lineage(
+    *,
+    generation_source_path: Path | None,
+    generation_source_object_path: str | None,
+    generator_module: str | None,
+    generator_code_version: str | None,
+) -> dict[str, str] | None:
+    values = (
+        generation_source_path,
+        generation_source_object_path,
+        generator_module,
+        generator_code_version,
+    )
+    if all(value is None for value in values):
+        return None
+    if any(value is None for value in values):
+        raise ValueError(
+            "Generation lineage requires the source path, source object path, "
+            "generator module, and generator code version together"
+        )
+
+    assert generation_source_path is not None
+    assert generation_source_object_path is not None
+    assert generator_module is not None
+    assert generator_code_version is not None
+
+    generation_relative_path = Path(generation_source_object_path)
+    if generation_relative_path.is_absolute():
+        raise ValueError("Generation source object path must be repository-relative")
+    if not generator_module.strip():
+        raise ValueError("Generator module must be nonempty")
+    if FULL_GIT_SHA_PATTERN.fullmatch(generator_code_version) is None:
+        raise ValueError("Generator code version must be a full lowercase Git SHA")
+
+    return {
+        "source_object_path": generation_relative_path.as_posix(),
+        "source_sha256": calculate_sha256(generation_source_path),
+        "generator_module": generator_module,
+        "generator_code_version": generator_code_version,
+    }
+
+
 def build_manifest(
     *,
     source_path: Path,
@@ -64,6 +108,10 @@ def build_manifest(
     dataset_name: str,
     source_id: str,
     source_contract_version: str,
+    generation_source_path: Path | None = None,
+    generation_source_object_path: str | None = None,
+    generator_module: str | None = None,
+    generator_code_version: str | None = None,
 ) -> dict[str, Any]:
     """Build source metadata without writing to the filesystem."""
     if not landing_volume_root.startswith("/Volumes/"):
@@ -79,7 +127,7 @@ def build_manifest(
         f"{dataset_slug}/{source_sha256}/{source_filename}"
     )
 
-    return {
+    manifest: dict[str, Any] = {
         "manifest_version": MANIFEST_VERSION,
         "dataset_name": dataset_name,
         "source_id": source_id,
@@ -94,6 +142,17 @@ def build_manifest(
         "request_window": None,
         "source_contract_version": source_contract_version,
     }
+
+    generation_lineage = _build_generation_lineage(
+        generation_source_path=generation_source_path,
+        generation_source_object_path=generation_source_object_path,
+        generator_module=generator_module,
+        generator_code_version=generator_code_version,
+    )
+    if generation_lineage is not None:
+        manifest["generation"] = generation_lineage
+
+    return manifest
 
 
 def serialize_manifest(manifest: dict[str, Any]) -> str:
@@ -129,6 +188,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset-name", required=True)
     parser.add_argument("--source-id", required=True)
     parser.add_argument("--source-contract-version", required=True)
+    parser.add_argument("--generation-source-object-path")
+    parser.add_argument("--generator-module")
+    parser.add_argument("--generator-code-version")
     return parser
 
 
@@ -145,8 +207,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 1
 
+    generation_relative_path = (
+        Path(args.generation_source_object_path)
+        if args.generation_source_object_path is not None
+        else None
+    )
+    if generation_relative_path is not None and generation_relative_path.is_absolute():
+        print(
+            "generation-source-object-path must be repository-relative",
+            file=sys.stderr,
+        )
+        return 1
+
     settings = Settings.from_environment(project_root)
     source_path = project_root / source_relative_path
+    generation_source_path = (
+        project_root / generation_relative_path
+        if generation_relative_path is not None
+        else None
+    )
 
     try:
         manifest = build_manifest(
@@ -156,6 +235,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             dataset_name=args.dataset_name,
             source_id=args.source_id,
             source_contract_version=args.source_contract_version,
+            generation_source_path=generation_source_path,
+            generation_source_object_path=(
+                generation_relative_path.as_posix()
+                if generation_relative_path is not None
+                else None
+            ),
+            generator_module=args.generator_module,
+            generator_code_version=args.generator_code_version,
         )
     except (FileNotFoundError, ValueError) as exc:
         print(f"manifest generation failed: {exc}", file=sys.stderr)
@@ -176,6 +263,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"source_sha256={source_sha256}")
     print(f"manifest_sha256={manifest_sha256}")
     print(f"source_record_count={manifest['source_record_count']}")
+    generation = manifest.get("generation")
+    if generation is not None:
+        print(f"generation_source_sha256={generation['source_sha256']}")
+        print(f"generator_code_version={generation['generator_code_version']}")
     return 0
 
 
