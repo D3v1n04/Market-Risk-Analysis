@@ -20,7 +20,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "daily_prices": "1.1.0",
     "data_quality_violations": "1.2.0",
     "derivation_runs": "1.0.0",
-    "ingestion_batches": "1.2.0",
+    "ingestion_batches": "2.0.0",
     "instruments": "1.0.0",
     "portfolios": "1.1.0",
     "portfolio_record_outcomes": "1.0.0",
@@ -134,11 +134,26 @@ def test_ingestion_batch_contract_supports_git_fixture_reruns() -> None:
 def test_ingestion_batch_contract_is_bronze_only() -> None:
     contract = _load_contract("ingestion_batches")
     scope = contract["operation_scope"]
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
 
     assert scope["input_layer"] == "SOURCE"
     assert scope["output_layer"] == "BRONZE"
     assert scope["includes_silver_processing"] is False
-    assert contract["contract_version"] == "1.2.0"
+
+    assert set(fields["dataset_name"]["allowed_values"]) == {
+        "CORPORATE_ACTIONS",
+               "DAILY_PRICES",
+        "INSTRUMENTS",
+        "PORTFOLIOS",
+        "TARGET_ALLOCATIONS",
+       }
+    assert "TRADING_CALENDAR" not in fields["dataset_name"]["allowed_values"]
+    assert "POSITIONS" not in fields["dataset_name"]["allowed_values"]
+
+    assert contract["contract_version"] == "2.0.0"
 
 
 def test_declared_fixture_paths_exist() -> None:

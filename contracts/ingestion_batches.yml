@@ -1,4 +1,4 @@
-contract_version: 1.2.0
+contract_version: 2.0.0
 dataset: ingestion_batches
 dataset_class: operational_audit
 description: One immutable audit record for every attempt to ingest one named dataset from one source into Bronze.
@@ -20,7 +20,7 @@ fields:
   - name: dataset_name
     type: STRING
     nullable: false
-    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS, PORTFOLIOS]
+    allowed_values: [CORPORATE_ACTIONS, DAILY_PRICES, INSTRUMENTS, PORTFOLIOS, TARGET_ALLOCATIONS]
   - name: source_id
     type: STRING
     nullable: false
