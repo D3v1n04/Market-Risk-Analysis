@@ -21,7 +21,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "data_quality_violations": "2.0.0",
     "derivation_runs": "1.0.0",
     "ingestion_batches": "2.0.0",
-    "instruments": "1.0.0",
+    "instruments": "1.1.0",
     "portfolios": "1.1.0",
     "portfolio_record_outcomes": "1.0.0",
     "positions": "1.1.0",
@@ -29,7 +29,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "source_record_outcomes": "1.0.0",
     "stress_scenario_shocks": "1.0.0",
     "stress_scenarios": "1.0.0",
-    "target_allocations": "1.0.0",
+    "target_allocations": "1.1.0",
     "trading_calendar": "1.0.0",
 }
 
@@ -1826,3 +1826,100 @@ def test_source_record_outcome_contract_is_generic_and_traceable() -> None:
         and rule["disposition"] == "FAIL_PROCESSING_AUDIT"
         for rule in rules.values()
     )
+
+
+def test_phase_06_reference_contracts_support_governed_silver_processing() -> None:
+    expected_rules = {
+        "instruments": {
+            "INSTRUMENT_REQUIRED_FIELDS",
+            "INSTRUMENT_TYPES_CASTABLE",
+            "INSTRUMENT_ALLOWED_VALUES",
+            "INSTRUMENT_ID_FORMAT",
+            "INSTRUMENT_CONFIG_VERSION_VALID",
+            "INSTRUMENT_CLASSIFICATION_REQUIRED",
+            "INSTRUMENT_ACTIVE_DATE_RANGE",
+            "INSTRUMENT_RECORD_HASH_VALID",
+            "INSTRUMENT_SAME_BATCH_IDENTICAL_DUPLICATE",
+            "INSTRUMENT_SAME_BATCH_CONFLICT",
+            "INSTRUMENT_LATER_BATCH_UNCHANGED",
+            "INSTRUMENT_LATER_BATCH_CORRECTION",
+            "INSTRUMENT_INVALID_CORRECTION",
+            "INSTRUMENT_ACTIVE_COUNT",
+            "INSTRUMENT_ID_UNIQUE",
+            "INSTRUMENT_PROVIDER_SYMBOL_UNIQUE",
+        },
+        "target_allocations": {
+            "ALLOCATION_REQUIRED_FIELDS",
+            "ALLOCATION_TYPES_CASTABLE",
+            "ALLOCATION_VERSION_VALID",
+            "ALLOCATION_FOREIGN_KEYS_VALID",
+            "ALLOCATION_WEIGHT_NONZERO",
+            "ALLOCATION_EFFECTIVE_DATE_RANGE",
+            "ALLOCATION_RECORD_HASH_VALID",
+            "ALLOCATION_SAME_BATCH_IDENTICAL_DUPLICATE",
+            "ALLOCATION_SAME_BATCH_CONFLICT",
+            "ALLOCATION_LATER_BATCH_UNCHANGED",
+            "ALLOCATION_LATER_BATCH_CORRECTION",
+            "ALLOCATION_INVALID_CORRECTION",
+            "ALLOCATION_ACTIVE_COVERAGE",
+            "ALLOCATION_BUSINESS_KEY_UNIQUE",
+            "ALLOCATION_EFFECTIVE_RANGES_NONOVERLAPPING",
+            "ALLOCATION_LONG_ONLY_TOTALS",
+            "ALLOCATION_LONG_SHORT_TOTALS",
+        },
+    }
+    expected_version_fields = {
+        "instruments": "config_version",
+        "target_allocations": "allocation_version",
+    }
+
+    for dataset, expected_rule_ids in expected_rules.items():
+        contract = _load_contract(dataset)
+        rules = {
+            rule["rule_id"]: rule
+            for rule in contract["quality_rules"]
+        }
+
+        assert contract["contract_version"] == "1.1.0"
+        assert set(rules) == expected_rule_ids
+
+        processing = contract["silver_processing"]
+        assert processing == {
+            "input_layer": "BRONZE",
+            "output_layer": "SILVER",
+            "publication_mode": "ATOMIC",
+            "type_conversion": "TRY_CAST",
+            "version_field": expected_version_fields[dataset],
+            "preserve_last_good_snapshot_on_failure": True,
+            "unchanged_does_not_publish": True,
+        }
+
+        assert all(
+            rule["scope"] in {"RECORD", "BUSINESS_KEY", "DATASET"}
+            and rule["disposition"]
+            for rule in rules.values()
+        )
+
+        dataset_rules = [
+            rule
+            for rule in rules.values()
+            if rule["scope"] == "DATASET"
+        ]
+        assert dataset_rules
+        assert all(
+            rule["disposition"] == "FAIL_PROCESSING_RUN"
+            for rule in dataset_rules
+        )
+
+        assert any(
+            rule["disposition"] == "WARN_AND_DEDUPLICATE"
+            for rule in rules.values()
+        )
+        assert any(
+            rule["disposition"] == "UNCHANGED"
+            for rule in rules.values()
+        )
+        assert any(
+            rule["disposition"] == "ACCEPT_CORRECTION"
+            for rule in rules.values()
+        )

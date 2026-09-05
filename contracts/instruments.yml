@@ -1,4 +1,4 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: instruments
 dataset_class: versioned_reference
 description: Stable identities and reviewed classifications for the 15-instrument MVP universe.
@@ -119,23 +119,109 @@ record_hash:
     - is_active
     - config_version
 
+silver_processing:
+  input_layer: BRONZE
+  output_layer: SILVER
+  publication_mode: ATOMIC
+  type_conversion: TRY_CAST
+  version_field: config_version
+  preserve_last_good_snapshot_on_failure: true
+  unchanged_does_not_publish: true
+
 quality_rules:
-  - rule_id: INSTRUMENT_ACTIVE_COUNT
+  - rule_id: INSTRUMENT_REQUIRED_FIELDS
+    scope: RECORD
     severity: ERROR
-    assertion: Contract version 1.0.0 contains exactly 15 active instruments.
-  - rule_id: INSTRUMENT_ID_UNIQUE
+    disposition: REJECT
+    assertion: Every non-nullable instrument field is present and nonempty.
+
+  - rule_id: INSTRUMENT_TYPES_CASTABLE
+    scope: RECORD
     severity: ERROR
-    assertion: instrument_id is non-null and unique.
-  - rule_id: INSTRUMENT_PROVIDER_SYMBOL_UNIQUE
+    disposition: REJECT
+    assertion: Dates and booleans cast to their contracted Silver types without loss.
+
+  - rule_id: INSTRUMENT_ALLOWED_VALUES
+    scope: RECORD
     severity: ERROR
-    assertion: yfinance_symbol is non-null and unique among active instruments.
+    disposition: REJECT
+    assertion: Asset class, security type, exchange, currency, country, sector, and risk cluster match their contracted allowed values.
+
+  - rule_id: INSTRUMENT_ID_FORMAT
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: instrument_id uses uppercase snake case.
+
+  - rule_id: INSTRUMENT_CONFIG_VERSION_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: config_version contains a valid three-part numeric semantic version.
+
   - rule_id: INSTRUMENT_CLASSIFICATION_REQUIRED
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: Active instruments have complete sector and classification provenance.
+
   - rule_id: INSTRUMENT_ACTIVE_DATE_RANGE
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: active_to is null or on or after active_from.
+
   - rule_id: INSTRUMENT_RECORD_HASH_VALID
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: record_hash matches the canonical SHA-256 calculation.
+
+  - rule_id: INSTRUMENT_SAME_BATCH_IDENTICAL_DUPLICATE
+    scope: BUSINESS_KEY
+    severity: WARNING
+    disposition: WARN_AND_DEDUPLICATE
+    assertion: Identical same-key and same-hash rows keep the lowest source_row_number as the canonical candidate.
+
+  - rule_id: INSTRUMENT_SAME_BATCH_CONFLICT
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: REJECT
+    assertion: Differing same-key candidates in one batch are rejected rather than resolved using arrival or row order.
+
+  - rule_id: INSTRUMENT_LATER_BATCH_UNCHANGED
+    scope: BUSINESS_KEY
+    severity: INFO
+    disposition: UNCHANGED
+    assertion: A later record with the same key, config_version, and record_hash does not republish the canonical record.
+
+  - rule_id: INSTRUMENT_LATER_BATCH_CORRECTION
+    scope: BUSINESS_KEY
+    severity: INFO
+    disposition: ACCEPT_CORRECTION
+    assertion: A valid later record with a higher semantic config_version may replace the current canonical record.
+
+  - rule_id: INSTRUMENT_INVALID_CORRECTION
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: REJECT
+    assertion: Changed values with the same or a lower config_version never replace the current canonical record.
+
+  - rule_id: INSTRUMENT_ACTIVE_COUNT
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: The prospective canonical snapshot contains exactly 15 active instruments.
+
+  - rule_id: INSTRUMENT_ID_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: After deterministic deduplication, instrument_id is non-null and unique in the canonical dataset.
+
+  - rule_id: INSTRUMENT_PROVIDER_SYMBOL_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: yfinance_symbol is non-null and unique among active canonical instruments.
 

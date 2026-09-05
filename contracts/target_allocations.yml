@@ -1,4 +1,4 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: target_allocations
 dataset_class: git_managed_configuration
 description: Signed instrument weights used to initialize each MVP portfolio.
@@ -57,31 +57,117 @@ record_hash:
     - target_weight
     - allocation_version
 
+silver_processing:
+  input_layer: BRONZE
+  output_layer: SILVER
+  publication_mode: ATOMIC
+  type_conversion: TRY_CAST
+  version_field: allocation_version
+  preserve_last_good_snapshot_on_failure: true
+  unchanged_does_not_publish: true
+
 quality_rules:
-  - rule_id: ALLOCATION_ACTIVE_COVERAGE
+  - rule_id: ALLOCATION_REQUIRED_FIELDS
+    scope: RECORD
     severity: ERROR
-    assertion: Each active portfolio has exactly 15 unique active instrument allocations.
-  - rule_id: ALLOCATION_BUSINESS_KEY_UNIQUE
+    disposition: REJECT
+    assertion: Every non-nullable allocation field is present and nonempty.
+
+  - rule_id: ALLOCATION_TYPES_CASTABLE
+    scope: RECORD
     severity: ERROR
-    assertion: portfolio_id, instrument_id, and effective_from are unique together.
+    disposition: REJECT
+    assertion: Dates and target_weight cast to their contracted Silver types without loss.
+
+  - rule_id: ALLOCATION_VERSION_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: allocation_version contains a valid three-part numeric semantic version.
+
   - rule_id: ALLOCATION_FOREIGN_KEYS_VALID
+    scope: RECORD
     severity: ERROR
-    assertion: Every portfolio_id and instrument_id resolves to an active fixture record.
+    disposition: REJECT
+    assertion: Every portfolio_id and instrument_id resolves to an active canonical Silver record.
+
   - rule_id: ALLOCATION_WEIGHT_NONZERO
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
     assertion: target_weight is not zero.
-  - rule_id: ALLOCATION_LONG_ONLY_TOTALS
+
+  - rule_id: ALLOCATION_EFFECTIVE_DATE_RANGE
+    scope: RECORD
     severity: ERROR
+    disposition: REJECT
+    assertion: effective_to is null or on or after effective_from.
+
+  - rule_id: ALLOCATION_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: REJECT
+    assertion: record_hash matches the canonical SHA-256 calculation.
+
+  - rule_id: ALLOCATION_SAME_BATCH_IDENTICAL_DUPLICATE
+    scope: BUSINESS_KEY
+    severity: WARNING
+    disposition: WARN_AND_DEDUPLICATE
+    assertion: Identical same-key and same-hash rows keep the lowest source_row_number as the canonical candidate.
+
+  - rule_id: ALLOCATION_SAME_BATCH_CONFLICT
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: REJECT
+    assertion: Differing same-key candidates in one batch are rejected rather than resolved using arrival or row order.
+
+  - rule_id: ALLOCATION_LATER_BATCH_UNCHANGED
+    scope: BUSINESS_KEY
+    severity: INFO
+    disposition: UNCHANGED
+    assertion: A later record with the same key, allocation_version, and record_hash does not republish the canonical record.
+
+  - rule_id: ALLOCATION_LATER_BATCH_CORRECTION
+    scope: BUSINESS_KEY
+    severity: INFO
+    disposition: ACCEPT_CORRECTION
+    assertion: A valid later record with a higher semantic allocation_version may replace the current canonical record.
+
+  - rule_id: ALLOCATION_INVALID_CORRECTION
+    scope: BUSINESS_KEY
+    severity: ERROR
+    disposition: REJECT
+    assertion: Changed values with the same or a lower allocation_version never replace the current canonical record.
+
+  - rule_id: ALLOCATION_ACTIVE_COVERAGE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Each active portfolio has exactly 15 unique active instrument allocations in the prospective canonical snapshot.
+
+  - rule_id: ALLOCATION_BUSINESS_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: After deterministic deduplication, portfolio_id, instrument_id, and effective_from are unique together.
+
+  - rule_id: ALLOCATION_EFFECTIVE_RANGES_NONOVERLAPPING
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
+    assertion: Effective allocation ranges do not overlap for the same portfolio and instrument.
+
+  - rule_id: ALLOCATION_LONG_ONLY_TOTALS
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
     tolerance: '0.000001'
     assertion: CORE_15_LONG has no negative weights and signed and gross totals equal 1.0.
+
   - rule_id: ALLOCATION_LONG_SHORT_TOTALS
+    scope: DATASET
     severity: ERROR
+    disposition: FAIL_PROCESSING_RUN
     tolerance: '0.000001'
     assertion: LONG_SHORT_130_30 positive, negative, gross, and net totals equal 1.3, -0.3, 1.6, and 1.0.
-  - rule_id: ALLOCATION_EFFECTIVE_DATE_RANGE
-    severity: ERROR
-    assertion: effective_to is null or on or after effective_from, with no overlapping ranges.
-  - rule_id: ALLOCATION_RECORD_HASH_VALID
-    severity: ERROR
-    assertion: record_hash matches the canonical SHA-256 calculation.
 
