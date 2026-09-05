@@ -83,3 +83,67 @@ def test_inspect_csv_rejects_incorrect_record_width(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="physical line 2"):
         inspect_csv(malformed_csv)
+
+
+@pytest.mark.parametrize(
+    (
+        "filename",
+        "dataset_name",
+        "expected_sha256",
+        "expected_record_count",
+        "expected_column_count",
+    ),
+    [
+        (
+            "instruments.csv",
+            "INSTRUMENTS",
+            (
+                "7eb9b32d1f4ef5689404b7f88c5f685a"
+                "c55fa2c27ea930e8d5de35b638200b7a"
+            ),
+            15,
+            18,
+        ),
+        (
+            "target_allocations.csv",
+            "TARGET_ALLOCATIONS",
+            (
+                "6182be5e69859a138aa2b94c642943460"
+                "aa1914439d340f68d63e4dffccb1e66"
+            ),
+            30,
+            7,
+        ),
+    ],
+)
+def test_phase_06_reference_fixture_manifests_are_exact(
+    filename: str,
+    dataset_name: str,
+    expected_sha256: str,
+    expected_record_count: int,
+    expected_column_count: int,
+) -> None:
+    source_object_path = f"data/fixtures/{filename}"
+    source_path = PROJECT_ROOT / source_object_path
+
+    manifest = build_manifest(
+        source_path=source_path,
+        source_object_path=source_object_path,
+        landing_volume_root=LANDING_VOLUME_ROOT,
+        dataset_name=dataset_name,
+        source_id="PROJECT_GIT_FIXTURE",
+        source_contract_version="1.0.0",
+    )
+
+    assert calculate_sha256(source_path) == expected_sha256
+    assert manifest["source_sha256"] == expected_sha256
+    assert manifest["source_record_count"] == expected_record_count
+    assert len(manifest["source_columns"]) == expected_column_count
+    assert manifest["source_id"] == "PROJECT_GIT_FIXTURE"
+    assert manifest["source_contract_version"] == "1.0.0"
+    assert manifest["landed_object_path"] == (
+        f"{LANDING_VOLUME_ROOT}/"
+        f"{dataset_name.lower()}/"
+        f"{expected_sha256}/"
+        f"{filename}"
+    )
