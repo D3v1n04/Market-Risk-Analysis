@@ -161,6 +161,31 @@ def test_reference_silver_processor_gates_publication() -> None:
     assert ".whenNotMatchedInsertAll()" in source
 
 
+def test_reference_silver_processor_freezes_prepublication_evidence() -> None:
+    source = _read_notebook()
+    violation_assignment = source.index("complete_rule_violations = (")
+    violation_materialization = source.index(
+        "frozen_violation_count = complete_rule_violations.count()"
+    )
+    outcome_assignment = source.index("outcomes = final_outcomes(")
+    outcome_materialization = source.index(
+        "frozen_outcome_count = outcomes.count()"
+    )
+    publication = source.index("if published:")
+
+    assert ".cache()" in source[
+        violation_assignment:violation_materialization
+    ]
+    assert ".cache()" in source[
+        outcome_assignment:outcome_materialization
+    ]
+    assert violation_materialization < publication
+    assert outcome_materialization < publication
+    assert '"frozen final outcome count"' in source
+    assert "outcomes.unpersist()" in source
+    assert "complete_rule_violations.unpersist()" in source
+
+
 def test_reference_silver_processor_preserves_audit_evidence() -> None:
     source = _read_notebook()
 

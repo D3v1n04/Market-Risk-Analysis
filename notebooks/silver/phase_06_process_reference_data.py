@@ -1308,11 +1308,18 @@ correction_rule_violations = invalid_correction_violations(
 )
 complete_rule_violations = (
     precomparison_violations.unionByName(correction_rule_violations)
-)
+).cache()
+frozen_violation_count = complete_rule_violations.count()
 outcomes = final_outcomes(
     candidates=ranked_candidates,
     comparisons=comparisons,
     violations=complete_rule_violations,
+).cache()
+frozen_outcome_count = outcomes.count()
+require_equal(
+    "frozen final outcome count",
+    frozen_outcome_count,
+    evaluated_count,
 )
 
 accepted_count = outcomes.where(
@@ -1601,7 +1608,7 @@ require_equal(
     spark.table(SILVER_VIOLATION_TABLE)
     .where(F.col("processing_run_id") == processing_run_id)
     .count(),
-    complete_rule_violations.count(),
+    frozen_violation_count,
 )
 
 print("silver_persistence=PASS")
@@ -1611,4 +1618,7 @@ print(f"run_status={run_status}")
 print(f"published={published}")
 print(f"persisted_canonical_count={persisted_snapshot.count()}")
 print(f"persisted_outcome_count={evaluated_count}")
-print(f"persisted_violation_count={complete_rule_violations.count()}")
+print(f"persisted_violation_count={frozen_violation_count}")
+
+outcomes.unpersist()
+complete_rule_violations.unpersist()
