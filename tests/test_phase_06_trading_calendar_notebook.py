@@ -141,3 +141,16 @@ def test_trading_calendar_merge_is_idempotent_and_reconciled() -> None:
     )
     for token in forbidden:
         assert token not in source
+
+
+def test_trading_calendar_avoids_serverless_persistence_commands() -> None:
+    source = _source().lower()
+    forbidden = (
+        ".cache()",
+        ".persist(",
+        ".unpersist(",
+        "cache table",
+        "persist table",
+    )
+    for token in forbidden:
+        assert token not in source

@@ -278,7 +278,7 @@ require_true(
 )
 
 target_schema = spark.table(TRADING_CALENDAR_TABLE).schema
-candidate_df = spark.createDataFrame(calendar_rows, schema=target_schema).cache()
+candidate_df = spark.createDataFrame(calendar_rows, schema=target_schema)
 require_equal("Spark candidate count", candidate_df.count(), EXPECTED_ROW_COUNT)
 candidate_df.createOrReplaceTempView("phase_06_trading_calendar_candidates")
 
@@ -399,5 +399,3 @@ print(
     f"updated_count={updated_count} "
     f"unchanged_count={unchanged_count}"
 )
-
-candidate_df.unpersist()
