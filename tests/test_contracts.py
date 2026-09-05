@@ -16,8 +16,8 @@ FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 EXPECTED_CONTRACT_VERSIONS = {
     "cash_balances": "1.1.0",
-    "corporate_actions": "1.0.0",
-    "daily_prices": "1.0.0",
+    "corporate_actions": "1.1.0",
+    "daily_prices": "1.1.0",
     "data_quality_violations": "1.2.0",
     "derivation_runs": "1.0.0",
     "ingestion_batches": "1.2.0",
@@ -1593,3 +1593,56 @@ def test_phase_06_scenario_isolates_portfolio_failure() -> None:
     assert unaffected["portfolio_id"] == "CORE_15_LONG"
     assert unaffected["expected_status"] == "SUCCEEDED"
     assert unaffected["expected_published"] is True
+
+
+def test_phase_06_market_inputs_preserve_true_source_lineage() -> None:
+    expected_sections = {
+        "daily_prices": {
+            "instrument_ids",
+            "business_dates",
+            "price_generation",
+        },
+        "corporate_actions": {"corporate_actions"},
+    }
+    expected_rules = {
+        "daily_prices": "PRICE_SOURCE_PROVENANCE_VALID",
+        "corporate_actions": "ACTION_SOURCE_PROVENANCE_VALID",
+    }
+
+    for dataset, sections in expected_sections.items():
+        contract = _load_contract(dataset)
+        fields = {
+            field["name"]: field
+            for field in contract["fields"]
+        }
+        rule_ids = {
+            rule["rule_id"]
+            for rule in contract["quality_rules"]
+        }
+
+        assert contract["contract_version"] == "1.1.0"
+        assert set(fields["source_id"]["allowed_values"]) == {
+            "YAHOO_FINANCE",
+            "PROJECT_GIT_FIXTURE",
+        }
+
+        fixture = contract["fixture"]
+        assert fixture["path"] == (
+            "data/fixtures/phase_06_analytics_scenario.yml"
+        )
+        assert fixture["format"] == "yaml"
+        assert fixture["source_id"] == "PROJECT_GIT_FIXTURE"
+        assert set(fixture["materialization_sections"]) == sections
+        assert fixture["instrument_mapping_path"] == (
+            "data/fixtures/instruments.csv"
+        )
+        assert (PROJECT_ROOT / fixture["path"]).is_file()
+        assert (PROJECT_ROOT / fixture["instrument_mapping_path"]).is_file()
+
+        semantics = contract["source_semantics"]
+        assert semantics["YAHOO_FINANCE"]["deterministic_fixture"] is False
+        assert (
+            semantics["PROJECT_GIT_FIXTURE"]["deterministic_fixture"]
+            is True
+        )
+        assert expected_rules[dataset] in rule_ids

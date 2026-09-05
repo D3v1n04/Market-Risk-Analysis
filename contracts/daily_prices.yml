@@ -1,8 +1,26 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: daily_prices
 dataset_class: sourced_observation
 description: Corporate-action-aware end-of-day market observations for valuation and risk analysis.
 grain: One row represents one source's end-of-day price observation for one instrument and trading date.
+
+fixture:
+  path: data/fixtures/phase_06_analytics_scenario.yml
+  format: yaml
+  source_id: PROJECT_GIT_FIXTURE
+  materialization_sections:
+    - instrument_ids
+    - business_dates
+    - price_generation
+  instrument_mapping_path: data/fixtures/instruments.csv
+
+source_semantics:
+  YAHOO_FINANCE:
+    origin: Live provider extraction.
+    deterministic_fixture: false
+  PROJECT_GIT_FIXTURE:
+    origin: Repository-controlled Phase 06 deterministic scenario.
+    deterministic_fixture: true
 
 business_key:
   - instrument_id
@@ -27,7 +45,7 @@ fields:
   - name: source_id
     type: STRING
     nullable: false
-    allowed_values: [YAHOO_FINANCE]
+    allowed_values: [YAHOO_FINANCE, PROJECT_GIT_FIXTURE]
   - name: source_symbol
     type: STRING
     nullable: false
@@ -129,6 +147,10 @@ quality_rules:
     severity: ERROR
     disposition: REJECT
     assertion: Every non-nullable field is present and nonempty.
+  - rule_id: PRICE_SOURCE_PROVENANCE_VALID
+    severity: ERROR
+    disposition: REJECT
+    assertion: source_id truthfully identifies either provider extraction or the declared project fixture.
   - rule_id: PRICE_INSTRUMENT_MAPPING
     severity: ERROR
     disposition: QUARANTINE
@@ -191,7 +213,8 @@ quality_rules:
     assertion: record_hash matches the canonical SHA-256 calculation.
 
 fixture_policy:
-  canonical_fixture: null
-  reason: Real price observations are not downloaded during Phase 03.
-  deterministic_examples_planned: true
-  example_scope: Positive and negative prices, OHLC conflicts, missing volume, duplicate rows, conflicting rows, corrections, weekends, currencies, and coverage.
+  canonical_fixture: data/fixtures/phase_06_analytics_scenario.yml
+  source_id: PROJECT_GIT_FIXTURE
+  reason: Phase 06 uses a repository-controlled deterministic scenario before live-market retrieval is approved.
+  deterministic_examples_planned: false
+  example_scope: Complete 15-instrument price coverage across inception, market movement, dividend, and split dates.

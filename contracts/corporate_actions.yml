@@ -1,8 +1,24 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: corporate_actions
 dataset_class: sourced_observation
 description: Explicit cash-dividend and stock-split events used to reconcile prices, quantities, cash, and returns.
 grain: One row represents one sourced corporate action type for one instrument and effective date.
+
+fixture:
+  path: data/fixtures/phase_06_analytics_scenario.yml
+  format: yaml
+  source_id: PROJECT_GIT_FIXTURE
+  materialization_sections:
+    - corporate_actions
+  instrument_mapping_path: data/fixtures/instruments.csv
+
+source_semantics:
+  YAHOO_FINANCE:
+    origin: Live provider extraction.
+    deterministic_fixture: false
+  PROJECT_GIT_FIXTURE:
+    origin: Repository-controlled Phase 06 deterministic scenario.
+    deterministic_fixture: true
 
 business_key:
   - instrument_id
@@ -32,7 +48,7 @@ fields:
   - name: source_id
     type: STRING
     nullable: false
-    allowed_values: [YAHOO_FINANCE]
+    allowed_values: [YAHOO_FINANCE, PROJECT_GIT_FIXTURE]
   - name: source_symbol
     type: STRING
     nullable: false
@@ -128,6 +144,10 @@ quality_rules:
     severity: ERROR
     disposition: REJECT
     assertion: Every unconditional required field is present and nonempty.
+  - rule_id: ACTION_SOURCE_PROVENANCE_VALID
+    severity: ERROR
+    disposition: REJECT
+    assertion: source_id truthfully identifies either provider extraction or the declared project fixture.
   - rule_id: ACTION_BUSINESS_KEY_UNIQUE
     severity: ERROR
     disposition: REJECT
@@ -186,7 +206,8 @@ quality_rules:
     assertion: record_hash matches the canonical SHA-256 calculation.
 
 fixture_policy:
-  canonical_fixture: null
-  reason: Real corporate actions are not downloaded during Phase 03.
-  deterministic_examples_planned: true
-  example_scope: Valid and invalid dividends, 2-for-1 splits, mixed action fields, duplicates, corrections, short dividends owed, and split market-value reconciliation.
+  canonical_fixture: data/fixtures/phase_06_analytics_scenario.yml
+  source_id: PROJECT_GIT_FIXTURE
+  reason: Phase 06 uses repository-controlled dividend and split events before live-market retrieval is approved.
+  deterministic_examples_planned: false
+  example_scope: One WMT cash dividend and one NVDA stock split with deterministic reconciliation expectations.
