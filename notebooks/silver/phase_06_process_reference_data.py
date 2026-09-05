@@ -234,6 +234,21 @@ def insert_only_audit_records(
     )
 
 
+def freeze_small_dataframe(
+    frame: DataFrame,
+    *,
+    label: str,
+    max_rows: int,
+) -> DataFrame:
+    """Detach a bounded DataFrame from mutable source-table state."""
+    rows = frame.limit(max_rows + 1).collect()
+    if len(rows) > max_rows:
+        raise ValueError(
+            f"{label} exceeded the safe materialization limit of {max_rows}"
+        )
+    return spark.createDataFrame(rows, schema=frame.schema)
+
+
 def canonical_hash_expression(fields: list[str]) -> Column:
     """Build the contract-defined record-hash expression."""
     return F.sha2(
@@ -1306,15 +1321,21 @@ correction_rule_violations = invalid_correction_violations(
     comparisons,
     dataset_name,
 )
-complete_rule_violations = (
-    precomparison_violations.unionByName(correction_rule_violations)
-).cache()
+complete_rule_violations = freeze_small_dataframe(
+    precomparison_violations.unionByName(correction_rule_violations),
+    label="record violations",
+    max_rows=specification["expected_source_count"] * 20,
+)
 frozen_violation_count = complete_rule_violations.count()
-outcomes = final_outcomes(
-    candidates=ranked_candidates,
-    comparisons=comparisons,
-    violations=complete_rule_violations,
-).cache()
+outcomes = freeze_small_dataframe(
+    final_outcomes(
+        candidates=ranked_candidates,
+        comparisons=comparisons,
+        violations=complete_rule_violations,
+    ),
+    label="final outcomes",
+    max_rows=specification["expected_source_count"],
+)
 frozen_outcome_count = outcomes.count()
 require_equal(
     "frozen final outcome count",
@@ -1619,6 +1640,3 @@ print(f"published={published}")
 print(f"persisted_canonical_count={persisted_snapshot.count()}")
 print(f"persisted_outcome_count={evaluated_count}")
 print(f"persisted_violation_count={frozen_violation_count}")
-
-outcomes.unpersist()
-complete_rule_violations.unpersist()
