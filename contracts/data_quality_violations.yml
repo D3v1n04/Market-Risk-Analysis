@@ -1,4 +1,4 @@
-contract_version: 1.2.0
+contract_version: 2.0.0
 dataset: data_quality_violations
 dataset_class: operational_audit
 description: Immutable evidence of each warning, quarantine, or rejection raised for a delivered source record.
@@ -36,7 +36,7 @@ fields:
   - name: dataset_name
     type: STRING
     nullable: false
-    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS, PORTFOLIOS]
+    allowed_values: [CORPORATE_ACTIONS, DAILY_PRICES, INSTRUMENTS, PORTFOLIOS, TARGET_ALLOCATIONS]
   - name: source_record_id
     type: STRING
     nullable: false
@@ -157,7 +157,7 @@ quality_rules:
   - rule_id: VIOLATION_NATURAL_KEY_UNIQUE
     severity: ERROR
     disposition: FAIL_AUDIT_RECORD
-    assertion: batch_id, source_record_id, and rule_id are unique together.
+    assertion: processing_run_id, source_record_id, and rule_id are unique together.
   - rule_id: VIOLATION_BATCH_REFERENCE_VALID
     severity: ERROR
     disposition: FAIL_AUDIT_RECORD

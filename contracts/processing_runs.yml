@@ -1,4 +1,4 @@
-contract_version: 1.0.0
+contract_version: 2.0.0
 dataset: processing_runs
 dataset_class: operational_audit
 description: Immutable audit evidence for every attempt to validate and canonicalize one Bronze ingestion batch into Silver.
@@ -36,7 +36,7 @@ fields:
   - name: dataset_name
     type: STRING
     nullable: false
-    allowed_values: [DAILY_PRICES, CORPORATE_ACTIONS, TRADING_CALENDAR, POSITIONS, PORTFOLIOS]
+    allowed_values: [CORPORATE_ACTIONS, DAILY_PRICES, INSTRUMENTS, PORTFOLIOS, TARGET_ALLOCATIONS]
   - name: attempt_number
     type: BIGINT
     nullable: false

@@ -1,0 +1,263 @@
+contract_version: 1.0.0
+dataset: source_record_outcomes
+dataset_class: operational_audit
+description: Immutable final outcome assigned to every non-portfolio Bronze input record evaluated by a Silver processing run.
+grain: One row represents one Bronze source record evaluated in one Silver processing run.
+
+operation_scope:
+  input_layer: BRONZE
+  output_layer: SILVER_AUDIT
+  supported_datasets:
+    - CORPORATE_ACTIONS
+    - DAILY_PRICES
+    - INSTRUMENTS
+    - TARGET_ALLOCATIONS
+  portfolio_outcomes_remain_in: portfolio_record_outcomes
+
+primary_key:
+  - outcome_id
+
+natural_key:
+  - processing_run_id
+  - source_record_id
+
+foreign_keys:
+  - fields: [processing_run_id]
+    references: processing_runs.processing_run_id
+  - fields: [batch_id]
+    references: ingestion_batches.batch_id
+
+fields:
+  - name: outcome_id
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+    description: Deterministic identifier for one processing-run and source-record pair.
+
+  - name: processing_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+
+  - name: batch_id
+    type: STRING
+    nullable: false
+    format: UUID
+
+  - name: dataset_name
+    type: STRING
+    nullable: false
+    allowed_values:
+      - CORPORATE_ACTIONS
+      - DAILY_PRICES
+      - INSTRUMENTS
+      - TARGET_ALLOCATIONS
+
+  - name: source_record_id
+    type: STRING
+    nullable: false
+    description: Deterministic batch_id and source_row_number identifier.
+
+  - name: source_row_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+
+  - name: source_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+  - name: business_key
+    type: STRING
+    nullable: true
+    description: Canonically encoded dataset business key; nullable when the source key is malformed.
+
+  - name: outcome
+    type: STRING
+    nullable: false
+    allowed_values:
+      - ACCEPTED_NEW
+      - ACCEPTED_CORRECTION
+      - UNCHANGED
+      - DEDUPLICATED
+      - QUARANTINED
+      - REJECTED
+
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+
+  - name: violation_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+
+  - name: canonical_record_hash
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+
+  - name: deduplicated_to_source_record_id
+    type: STRING
+    nullable: true
+    description: Winning source record when this row is an identical duplicate.
+
+  - name: evaluated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+
+  - name: dataset_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+source_record_id_derivation:
+  delimiter: ':'
+  fields: [batch_id, source_row_number]
+  format: '{batch_id}:{source_row_number}'
+
+outcome_id_derivation:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  fields: [processing_run_id, source_record_id]
+  output: Lowercase 64-character hexadecimal digest.
+
+dataset_business_keys:
+  INSTRUMENTS:
+    fields: [instrument_id]
+  TARGET_ALLOCATIONS:
+    fields: [portfolio_id, instrument_id, effective_from]
+  DAILY_PRICES:
+    fields: [instrument_id, price_date, source_id]
+  CORPORATE_ACTIONS:
+    fields: [instrument_id, effective_date, action_type, source_id]
+  encoding:
+    delimiter: '|'
+    null_token: <NULL>
+
+outcome_semantics:
+  ACCEPTED_NEW:
+    processing_run_count: accepted_count
+    canonical_candidate: true
+    business_key: required
+    canonical_record_hash: required
+
+  ACCEPTED_CORRECTION:
+    processing_run_count: accepted_count
+    canonical_candidate: true
+    business_key: required
+    canonical_record_hash: required
+
+  UNCHANGED:
+    processing_run_count: unchanged_count
+    canonical_candidate: false
+    business_key: required
+    canonical_record_hash: required
+
+  DEDUPLICATED:
+    processing_run_count: deduplicated_count
+    canonical_candidate: false
+    deduplicated_to_source_record_id: required
+
+  QUARANTINED:
+    processing_run_count: quarantined_count
+    canonical_candidate: false
+
+  REJECTED:
+    processing_run_count: rejected_count
+    canonical_candidate: false
+
+outcome_precedence:
+  - REJECTED
+  - QUARANTINED
+  - DEDUPLICATED
+  - UNCHANGED
+  - ACCEPTED_CORRECTION
+  - ACCEPTED_NEW
+
+warning_policy:
+  orthogonal_to_outcome: true
+  warning_count_must_not_exceed_violation_count: true
+  warning_count_must_not_create_an_additional_outcome: true
+
+deduplication_policy:
+  winner: lowest_source_row_number
+  nonwinner_outcome: DEDUPLICATED
+  winner_reference_required: true
+  winner_must_share_processing_run_id: true
+
+quality_rules:
+  - rule_id: SOURCE_OUTCOME_ID_UNIQUE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: outcome_id is the unique deterministic digest of processing_run_id and source_record_id.
+
+  - rule_id: SOURCE_OUTCOME_SOURCE_TRACEABLE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Processing run, Bronze batch, source row number, and source-record hash are mutually consistent.
+
+  - rule_id: SOURCE_OUTCOME_DATASET_ALLOWED
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: dataset_name is one of the four approved non-portfolio Bronze input datasets.
+
+  - rule_id: SOURCE_OUTCOME_DATASET_MATCH
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: dataset_name agrees with the linked processing run and ingestion batch.
+
+  - rule_id: SOURCE_OUTCOME_STATE_ALLOWED
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Every evaluated source record receives exactly one allowed final outcome.
+
+  - rule_id: SOURCE_OUTCOME_BUSINESS_KEY_CONSISTENT
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: A populated business_key follows the declared dataset-specific field order and encoding.
+
+  - rule_id: SOURCE_OUTCOME_COUNTS_NONNEGATIVE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: warning_count and violation_count are whole numbers greater than or equal to zero.
+
+  - rule_id: SOURCE_OUTCOME_WARNING_COUNT_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: warning_count does not exceed violation_count and does not alter the final outcome.
+
+  - rule_id: SOURCE_OUTCOME_CANONICAL_HASH_CONSISTENT
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: Accepted and unchanged outcomes contain a valid canonical_record_hash.
+
+  - rule_id: SOURCE_OUTCOME_DEDUPLICATION_LINK_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_PROCESSING_AUDIT
+    assertion: A deduplicated row identifies the lowest-row-number winning source record from the same processing run.
+
+fixture_policy:
+  canonical_fixture: null
+  reason: Outcome rows are generated audit evidence rather than supplied source records.
+  deterministic_examples_planned: true
+  example_scope: Accepted, unchanged, deduplicated, quarantined, and rejected outcomes for every supported dataset.

@@ -18,14 +18,15 @@ EXPECTED_CONTRACT_VERSIONS = {
     "cash_balances": "1.1.0",
     "corporate_actions": "1.1.0",
     "daily_prices": "1.1.0",
-    "data_quality_violations": "1.2.0",
+    "data_quality_violations": "2.0.0",
     "derivation_runs": "1.0.0",
     "ingestion_batches": "2.0.0",
     "instruments": "1.0.0",
     "portfolios": "1.1.0",
     "portfolio_record_outcomes": "1.0.0",
     "positions": "1.1.0",
-    "processing_runs": "1.0.0",
+    "processing_runs": "2.0.0",
+    "source_record_outcomes": "1.0.0",
     "stress_scenario_shocks": "1.0.0",
     "stress_scenarios": "1.0.0",
     "target_allocations": "1.0.0",
@@ -661,7 +662,7 @@ def test_violation_contract_supports_portfolio_silver_vocabulary() -> None:
         for field in contract["fields"]
     }
 
-    assert contract["contract_version"] == "1.2.0"
+    assert contract["contract_version"] == "2.0.0"
 
     assert (
         "PORTFOLIOS"
@@ -745,7 +746,7 @@ def test_violation_contract_preserves_silver_record_traceability() -> None:
         == "processing_runs.processing_run_id"
     )
 
-    assert contract["contract_version"] == "1.2.0"
+    assert contract["contract_version"] == "2.0.0"
 
 
 def test_processing_run_contract_declares_silver_run_identity() -> None:
@@ -755,7 +756,7 @@ def test_processing_run_contract_declares_silver_run_identity() -> None:
         for field in contract["fields"]
     }
 
-    assert contract["contract_version"] == "1.0.0"
+    assert contract["contract_version"] == "2.0.0"
     assert contract["dataset_class"] == "operational_audit"
     assert contract["primary_key"] == ["processing_run_id"]
     assert contract["natural_key"] == [
@@ -1661,3 +1662,167 @@ def test_phase_06_market_inputs_preserve_true_source_lineage() -> None:
             is True
         )
         assert expected_rules[dataset] in rule_ids
+
+
+def test_processing_audits_cover_only_bronze_datasets() -> None:
+    expected_datasets = {
+        "CORPORATE_ACTIONS",
+        "DAILY_PRICES",
+        "INSTRUMENTS",
+        "PORTFOLIOS",
+        "TARGET_ALLOCATIONS",
+    }
+
+    for contract_name in [
+        "processing_runs",
+        "data_quality_violations",
+    ]:
+        contract = _load_contract(contract_name)
+        fields = {
+            field["name"]: field
+            for field in contract["fields"]
+        }
+
+        assert set(
+            fields["dataset_name"]["allowed_values"]
+        ) == expected_datasets
+
+    assert "TRADING_CALENDAR" not in expected_datasets
+    assert "POSITIONS" not in expected_datasets
+
+
+def test_source_record_outcome_contract_is_generic_and_traceable() -> None:
+    contract = _load_contract("source_record_outcomes")
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+    rules = {
+        rule["rule_id"]: rule
+        for rule in contract["quality_rules"]
+    }
+
+    assert contract["contract_version"] == "1.0.0"
+    assert contract["dataset_class"] == "operational_audit"
+    assert contract["primary_key"] == ["outcome_id"]
+    assert contract["natural_key"] == [
+        "processing_run_id",
+        "source_record_id",
+    ]
+
+    scope = contract["operation_scope"]
+    assert scope["input_layer"] == "BRONZE"
+    assert scope["output_layer"] == "SILVER_AUDIT"
+    assert (
+        scope["portfolio_outcomes_remain_in"]
+        == "portfolio_record_outcomes"
+    )
+
+    expected_datasets = {
+        "CORPORATE_ACTIONS",
+        "DAILY_PRICES",
+        "INSTRUMENTS",
+        "TARGET_ALLOCATIONS",
+    }
+    assert set(scope["supported_datasets"]) == expected_datasets
+    assert set(
+        fields["dataset_name"]["allowed_values"]
+    ) == expected_datasets
+
+    expected_fields = {
+        "outcome_id",
+        "processing_run_id",
+        "batch_id",
+        "dataset_name",
+        "source_record_id",
+        "source_row_number",
+        "source_record_sha256",
+        "business_key",
+        "outcome",
+        "warning_count",
+        "violation_count",
+        "canonical_record_hash",
+        "deduplicated_to_source_record_id",
+        "evaluated_at_utc",
+        "dataset_contract_version",
+        "contract_version",
+    }
+    assert set(fields) == expected_fields
+
+    expected_outcomes = {
+        "ACCEPTED_NEW",
+        "ACCEPTED_CORRECTION",
+        "UNCHANGED",
+        "DEDUPLICATED",
+        "QUARANTINED",
+        "REJECTED",
+    }
+    assert set(fields["outcome"]["allowed_values"]) == expected_outcomes
+
+    source_identity = contract["source_record_id_derivation"]
+    assert source_identity["fields"] == [
+        "batch_id",
+        "source_row_number",
+    ]
+    assert source_identity["delimiter"] == ":"
+
+    outcome_identity = contract["outcome_id_derivation"]
+    assert outcome_identity["algorithm"] == "SHA-256"
+    assert outcome_identity["fields"] == [
+        "processing_run_id",
+        "source_record_id",
+    ]
+
+    business_keys = contract["dataset_business_keys"]
+    assert business_keys["INSTRUMENTS"]["fields"] == [
+        "instrument_id"
+    ]
+    assert business_keys["TARGET_ALLOCATIONS"]["fields"] == [
+        "portfolio_id",
+        "instrument_id",
+        "effective_from",
+    ]
+    assert business_keys["DAILY_PRICES"]["fields"] == [
+        "instrument_id",
+        "price_date",
+        "source_id",
+    ]
+    assert business_keys["CORPORATE_ACTIONS"]["fields"] == [
+        "instrument_id",
+        "effective_date",
+        "action_type",
+        "source_id",
+    ]
+
+    semantics = contract["outcome_semantics"]
+    assert semantics["ACCEPTED_NEW"]["canonical_record_hash"] == (
+        "required"
+    )
+    assert semantics["ACCEPTED_CORRECTION"][
+        "canonical_record_hash"
+    ] == "required"
+    assert semantics["UNCHANGED"]["canonical_record_hash"] == (
+        "required"
+    )
+    assert semantics["DEDUPLICATED"][
+        "deduplicated_to_source_record_id"
+    ] == "required"
+
+    expected_rule_ids = {
+        "SOURCE_OUTCOME_ID_UNIQUE",
+        "SOURCE_OUTCOME_SOURCE_TRACEABLE",
+        "SOURCE_OUTCOME_DATASET_ALLOWED",
+        "SOURCE_OUTCOME_DATASET_MATCH",
+        "SOURCE_OUTCOME_STATE_ALLOWED",
+        "SOURCE_OUTCOME_BUSINESS_KEY_CONSISTENT",
+        "SOURCE_OUTCOME_COUNTS_NONNEGATIVE",
+        "SOURCE_OUTCOME_WARNING_COUNT_VALID",
+        "SOURCE_OUTCOME_CANONICAL_HASH_CONSISTENT",
+        "SOURCE_OUTCOME_DEDUPLICATION_LINK_VALID",
+    }
+    assert set(rules) == expected_rule_ids
+    assert all(
+        rule["scope"] == "AUDIT_RECORD"
+        and rule["disposition"] == "FAIL_PROCESSING_AUDIT"
+        for rule in rules.values()
+    )
