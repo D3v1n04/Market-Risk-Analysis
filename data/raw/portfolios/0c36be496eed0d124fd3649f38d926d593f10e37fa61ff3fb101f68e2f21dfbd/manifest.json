@@ -1,0 +1,32 @@
+{
+  "dataset_name": "PORTFOLIOS",
+  "has_header": true,
+  "landed_object_path": "/Volumes/workspace/devin_market_risk_dev/bronze_landing/portfolios/0c36be496eed0d124fd3649f38d926d593f10e37fa61ff3fb101f68e2f21dfbd/portfolios_initialization.csv",
+  "manifest_version": "1.0.0",
+  "request_window": null,
+  "source_columns": [
+    "portfolio_id",
+    "portfolio_name",
+    "strategy_code",
+    "base_currency",
+    "target_inception_date",
+    "actual_inception_date",
+    "initial_nav",
+    "target_long_ratio",
+    "target_short_ratio",
+    "target_gross_ratio",
+    "target_net_ratio",
+    "rebalance_policy",
+    "cash_policy",
+    "is_active",
+    "config_version",
+    "record_hash"
+  ],
+  "source_contract_version": "1.1.0",
+  "source_format": "CSV",
+  "source_id": "PROJECT_GIT_FIXTURE",
+  "source_object_path": "data/raw/phase_06_analytics_foundation/portfolios_initialization.csv",
+  "source_record_count": 2,
+  "source_sha256": "0c36be496eed0d124fd3649f38d926d593f10e37fa61ff3fb101f68e2f21dfbd",
+  "source_size_bytes": 788
+}
