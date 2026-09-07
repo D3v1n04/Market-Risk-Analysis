@@ -1,0 +1,175 @@
+contract_version: 1.0.0
+dataset: position_market_values
+dataset_class: gold_analytical_fact
+description: Close-of-business USD valuation of each trusted Silver portfolio position.
+grain: One row represents one portfolio instrument valued at the close of one approved business date.
+
+primary_key:
+  - portfolio_id
+  - instrument_id
+  - valuation_date
+
+foreign_keys:
+  - fields: [portfolio_id, instrument_id, valuation_date]
+    references: positions.[portfolio_id, instrument_id, position_date]
+  - fields: [analytics_run_id]
+    references: analytics_runs.analytics_run_id
+
+fields:
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: instrument_id
+    type: STRING
+    nullable: false
+  - name: valuation_date
+    type: DATE
+    nullable: false
+    description: Approved portfolio business date valued at the market close.
+  - name: signed_quantity
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: shares
+  - name: close_price
+    type: DECIMAL(20,8)
+    nullable: false
+    unit: quote_currency_per_share
+    minimum_exclusive: 0
+  - name: quote_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: position_side
+    type: STRING
+    nullable: false
+    allowed_values: [LONG, SHORT]
+  - name: signed_market_value
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Signed quantity multiplied by same-date close price; shorts remain negative.
+  - name: absolute_market_value
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    minimum_inclusive: 0
+    description: Absolute value of signed market value, used for gross exposure.
+  - name: input_position_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_price_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: analytics_run_id
+    type: STRING
+    nullable: false
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+calculation:
+  as_of: MARKET_CLOSE_ON_VALUATION_DATE
+  price_field: daily_prices.close_price
+  quantity_field: positions.signed_quantity
+  currency_policy: USD_ONLY_NO_FX
+  signed_market_value_formula: signed_quantity * close_price
+  absolute_market_value_formula: abs(signed_market_value)
+  position_side_formula: LONG when signed_quantity is positive; SHORT when signed_quantity is negative.
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 2
+  missing_input_behavior: Fail the analytics run and withhold the complete portfolio-date partition.
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_declared_scale
+  fields:
+    - portfolio_id
+    - instrument_id
+    - valuation_date
+    - signed_quantity
+    - close_price
+    - quote_currency
+    - base_currency
+    - position_side
+    - signed_market_value
+    - absolute_market_value
+    - input_position_record_sha256
+    - input_price_record_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - analytics_run_id
+    - calculated_at_utc
+    - contract_version
+
+quality_rules:
+  - rule_id: POSITION_MARKET_VALUE_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Portfolio, instrument, and valuation date are unique together.
+  - rule_id: POSITION_MARKET_VALUE_INPUT_COVERAGE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: The partition contains exactly one trusted position and same-date canonical close price for every expected active position.
+  - rule_id: POSITION_MARKET_VALUE_DATE_ALIGNMENT
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Position date and price date both equal valuation date.
+  - rule_id: POSITION_MARKET_VALUE_CURRENCY_MATCH
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Instrument quote currency and portfolio base currency are both USD; no FX conversion is implied.
+  - rule_id: POSITION_MARKET_VALUE_FORMULA_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Signed market value equals signed quantity multiplied by close price without intermediate rounding.
+  - rule_id: POSITION_MARKET_VALUE_ABSOLUTE_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Absolute market value equals the absolute value of signed market value.
+  - rule_id: POSITION_MARKET_VALUE_SIGN_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: LONG values are positive and SHORT values are negative.
+  - rule_id: POSITION_MARKET_VALUE_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.
+
+fixture_policy:
+  source_fixture: data/fixtures/phase_06_analytics_scenario.yml
+  deterministic_examples:
+    - CORE_15_LONG on 2016-01-04 has signed, absolute, gross, and net market value of USD 1000000 except short exposure, which is zero.
+    - LONG_SHORT_130_30 on 2016-01-04 has USD 1300000 long, USD 300000 short magnitude, USD 1600000 gross, and USD 1000000 net market value.
+    - A split changes quantity and price inversely and must not create split-only market value or PnL.

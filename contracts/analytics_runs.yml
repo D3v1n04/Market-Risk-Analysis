@@ -1,0 +1,180 @@
+contract_version: 1.0.0
+dataset: analytics_runs
+dataset_class: operational_audit
+description: Immutable audit evidence for each attempt to calculate one Gold analytical partition from trusted Silver inputs.
+grain: One row represents one attempt to calculate one Gold output dataset for one portfolio and one valuation date.
+
+operation_scope:
+  input_trust_boundary: TRUSTED_SILVER
+  output_layer: GOLD
+  output_datasets_per_run: 1
+  portfolios_per_run: 1
+  valuation_dates_per_run: 1
+  atomic_publication: true
+
+primary_key:
+  - analytics_run_id
+
+natural_key:
+  - output_dataset_name
+  - portfolio_id
+  - valuation_date
+  - attempt_number
+
+foreign_keys:
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [reprocess_of_analytics_run_id]
+    references: analytics_runs.analytics_run_id
+    nullable: true
+
+fields:
+  - name: analytics_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+    description: Unique immutable identifier for this Gold calculation attempt.
+  - name: output_dataset_name
+    type: STRING
+    nullable: false
+    allowed_values: [POSITION_MARKET_VALUES]
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: valuation_date
+    type: DATE
+    nullable: false
+    description: Approved close-of-business date represented by the output partition.
+  - name: attempt_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: reprocess_of_analytics_run_id
+    type: STRING
+    nullable: true
+    format: UUID
+  - name: trigger_type
+    type: STRING
+    nullable: false
+    allowed_values: [MANUAL, SCHEDULED, RECOVERY]
+  - name: started_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: completed_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: status
+    type: STRING
+    nullable: false
+    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, FAILED]
+  - name: input_dataset_names
+    type: ARRAY<STRING>
+    nullable: false
+  - name: input_record_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: input_manifest_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: expected_output_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: calculated_output_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: canonical_before_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: canonical_after_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: canonical_before_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+  - name: canonical_after_sha256
+    type: STRING
+    nullable: true
+    format: '^[0-9a-f]{64}$'
+  - name: published
+    type: BOOLEAN
+    nullable: false
+  - name: published_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: failed_rule_ids
+    type: ARRAY<STRING>
+    nullable: false
+  - name: error_code
+    type: STRING
+    nullable: true
+  - name: error_message
+    type: STRING
+    nullable: true
+  - name: output_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: code_version
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{40}$'
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+publication_semantics:
+  partition_key: [portfolio_id, valuation_date]
+  mode: ATOMIC_REPLACE_PARTITION
+  unchanged_behavior: Record a successful attempt with published false and preserve the canonical partition.
+  failure_behavior: Preserve the last good canonical partition.
+
+quality_rules:
+  - rule_id: ANALYTICS_RUN_NATURAL_KEY_UNIQUE
+    scope: AUDIT_DATASET
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_AUDIT
+    assertion: Output dataset, portfolio, valuation date, and attempt number are unique together.
+  - rule_id: ANALYTICS_RUN_INPUTS_TRUSTED
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_AUDIT
+    assertion: Every manifest entry identifies an approved trusted Silver dataset and immutable record-set digest.
+  - rule_id: ANALYTICS_RUN_COUNTS_RECONCILE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_AUDIT
+    assertion: Successful runs calculate the expected complete output count and failed runs do not publish.
+  - rule_id: ANALYTICS_RUN_PUBLICATION_STATE_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_AUDIT
+    assertion: Published state, timestamps, canonical counts, hashes, and terminal status agree.
+  - rule_id: ANALYTICS_RUN_REPROCESS_LINK_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_AUDIT
+    assertion: Attempts after the first link to a prior run for the same dataset, portfolio, and valuation date.
+  - rule_id: ANALYTICS_RUN_VERSION_LINEAGE_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_AUDIT
+    assertion: Output contract, calculation, code, and audit contract versions are present and valid.

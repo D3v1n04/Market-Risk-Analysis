@@ -15,6 +15,7 @@ CONTRACT_DIR = PROJECT_ROOT / "contracts"
 FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 EXPECTED_CONTRACT_VERSIONS = {
+    "analytics_runs": "1.0.0",
     "cash_balances": "1.1.0",
     "corporate_actions": "1.1.0",
     "daily_prices": "1.1.0",
@@ -25,6 +26,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "portfolios": "1.1.0",
     "portfolio_record_outcomes": "1.0.0",
     "positions": "1.1.0",
+    "position_market_values": "1.0.0",
     "processing_runs": "2.0.0",
     "source_record_outcomes": "1.0.0",
     "stress_scenario_shocks": "1.0.0",
