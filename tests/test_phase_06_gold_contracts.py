@@ -20,10 +20,10 @@ def _load_contract(dataset: str) -> dict[str, Any]:
 def test_gold_analytics_run_contract_is_partition_atomic() -> None:
     contract = _load_contract("analytics_runs")
 
-    assert contract["contract_version"] == "1.1.0"
+    assert contract["contract_version"] == "1.2.0"
     assert contract["dataset_class"] == "operational_audit"
     assert contract["operation_scope"] == {
-        "input_trust_boundary": "TRUSTED_SILVER",
+        "input_trust_boundary": "TRUSTED_SILVER_AND_PUBLISHED_GOLD",
         "output_layer": "GOLD",
         "output_datasets_per_run": 1,
         "portfolios_per_run": 1,

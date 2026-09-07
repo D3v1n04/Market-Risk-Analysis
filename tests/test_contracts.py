@@ -15,7 +15,7 @@ CONTRACT_DIR = PROJECT_ROOT / "contracts"
 FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 EXPECTED_CONTRACT_VERSIONS = {
-    "analytics_runs": "1.1.0",
+    "analytics_runs": "1.2.0",
     "cash_balances": "1.1.0",
     "corporate_actions": "1.1.0",
     "daily_prices": "1.1.0",
@@ -1991,6 +1991,10 @@ def test_portfolio_daily_metrics_contract_defines_complete_gold_metrics() -> Non
         "valuation_date",
     ]
     assert publication["publish_only_when_status"] == "SUCCEEDED"
+
+    assert analytics_runs["operation_scope"]["input_trust_boundary"] == (
+    "TRUSTED_SILVER_AND_PUBLISHED_GOLD"
+    )
 
     allowed_outputs = analytics_fields["output_dataset_name"]["allowed_values"]
     assert "POSITION_MARKET_VALUES" in allowed_outputs

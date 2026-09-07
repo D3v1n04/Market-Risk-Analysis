@@ -1,11 +1,11 @@
-contract_version: 1.1.0
+contract_version: 1.2.0
 dataset: analytics_runs
 dataset_class: operational_audit
-description: Immutable audit evidence for each attempt to calculate one Gold analytical partition from trusted Silver inputs.
+description: Immutable audit evidence for each attempt to calculate one Gold analytical partition from governed Silver inputs and, when required, previously published Gold inputs.
 grain: One row represents one attempt to calculate one Gold output dataset for one portfolio and one valuation date.
 
 operation_scope:
-  input_trust_boundary: TRUSTED_SILVER
+  input_trust_boundary: TRUSTED_SILVER_AND_PUBLISHED_GOLD
   output_layer: GOLD
   output_datasets_per_run: 1
   portfolios_per_run: 1
