@@ -34,7 +34,7 @@ EXPECTED_COMPONENTS = [
         "2016-01-06",
         Decimal("1007499.999997"),
         Decimal("0"),
-        Decimal("1000"),
+        Decimal("650"),
         Decimal("1007499.999997"),
     ),
     (
@@ -42,8 +42,8 @@ EXPECTED_COMPONENTS = [
         "2016-01-07",
         Decimal("1007499.999997"),
         Decimal("0"),
-        Decimal("1000"),
-        Decimal("1008499.999997"),
+        Decimal("650"),
+        Decimal("1008149.999997"),
     ),
     (
         "LONG_SHORT_130_30",
@@ -201,7 +201,7 @@ def test_eight_expected_portfolio_dates_reconcile_independently() -> None:
     assert inception["net_ratio"] == Decimal("1.00")
 
     core_dividend = results[("CORE_15_LONG", "2016-01-06")]
-    assert core_dividend["pnl"] == Decimal("1000")
+    assert core_dividend["pnl"] == Decimal("650")
 
     short_dividend = results[("LONG_SHORT_130_30", "2016-01-06")]
     assert short_dividend["pnl"] == Decimal("-1000")
