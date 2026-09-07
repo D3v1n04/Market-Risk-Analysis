@@ -1,0 +1,312 @@
+contract_version: 1.0.0
+dataset: portfolio_daily_metrics
+dataset_class: gold_analytical_fact
+description: Audited close-of-business USD portfolio performance and exposure metrics.
+grain: One row represents one portfolio measured at the close of one approved valuation date.
+
+primary_key:
+  - portfolio_id
+  - valuation_date
+
+foreign_keys:
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [portfolio_id, valuation_date]
+    references: cash_balances.[portfolio_id, cash_date]
+  - fields: [analytics_run_id]
+    references: analytics_runs.analytics_run_id
+
+fields:
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: valuation_date
+    type: DATE
+    nullable: false
+    description: Approved portfolio business date measured at market close.
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+
+  - name: position_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: long_position_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: short_position_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+
+  - name: long_market_value
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    minimum_inclusive: 0
+  - name: short_market_value
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    minimum_inclusive: 0
+    description: Positive magnitude of short security market value.
+  - name: gross_market_value
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    minimum_inclusive: 0
+  - name: net_security_market_value
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+
+  - name: closing_cash_balance
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+  - name: closing_nav
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    minimum_exclusive: 0
+
+  - name: baseline_nav
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    minimum_exclusive: 0
+  - name: baseline_source
+    type: STRING
+    nullable: false
+    allowed_values: [INITIAL_NAV, PRIOR_PUBLISHED_NAV]
+  - name: prior_valuation_date
+    type: DATE
+    nullable: conditional
+    description: Null at inception and otherwise the prior published valuation date.
+
+  - name: daily_pnl
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+  - name: daily_return
+    type: DECIMAL(38,18)
+    nullable: false
+    unit: decimal_ratio
+    description: A value of 0.01 represents a one percent return.
+
+  - name: long_exposure_ratio
+    type: DECIMAL(38,18)
+    nullable: false
+    unit: fraction_of_closing_nav
+    minimum_inclusive: 0
+  - name: short_exposure_ratio
+    type: DECIMAL(38,18)
+    nullable: false
+    unit: fraction_of_closing_nav
+    minimum_inclusive: 0
+  - name: gross_exposure_ratio
+    type: DECIMAL(38,18)
+    nullable: false
+    unit: fraction_of_closing_nav
+    minimum_inclusive: 0
+  - name: net_exposure_ratio
+    type: DECIMAL(38,18)
+    nullable: false
+    unit: fraction_of_closing_nav
+
+  - name: input_market_value_partition_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_cash_balance_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_portfolio_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_prior_metric_record_sha256
+    type: STRING
+    nullable: conditional
+    format: '^[0-9a-f]{64}$'
+
+  - name: analytics_run_id
+    type: STRING
+    nullable: false
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+calculation:
+  as_of: MARKET_CLOSE_ON_VALUATION_DATE
+  currency_policy: USD_ONLY_NO_FX
+  long_market_value_formula: sum signed_market_value where position_side is LONG
+  short_market_value_formula: sum absolute_market_value where position_side is SHORT
+  gross_market_value_formula: long_market_value + short_market_value
+  net_security_market_value_formula: long_market_value - short_market_value
+  closing_nav_formula: net_security_market_value + closing_cash_balance
+  inception_baseline_formula: portfolios.initial_nav
+  later_baseline_formula: prior published portfolio_daily_metrics.closing_nav
+  daily_pnl_formula: closing_nav - baseline_nav
+  daily_return_formula: daily_pnl / baseline_nav
+  long_exposure_ratio_formula: long_market_value / closing_nav
+  short_exposure_ratio_formula: short_market_value / closing_nav
+  gross_exposure_ratio_formula: gross_market_value / closing_nav
+  net_exposure_ratio_formula: net_security_market_value / closing_nav
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 2
+  external_portfolio_flows_supported: false
+  missing_input_behavior: Fail the analytics run and withhold the complete portfolio-date partition.
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_declared_scale
+  fields:
+    - portfolio_id
+    - valuation_date
+    - base_currency
+    - position_count
+    - long_position_count
+    - short_position_count
+    - long_market_value
+    - short_market_value
+    - gross_market_value
+    - net_security_market_value
+    - closing_cash_balance
+    - closing_nav
+    - baseline_nav
+    - baseline_source
+    - prior_valuation_date
+    - daily_pnl
+    - daily_return
+    - long_exposure_ratio
+    - short_exposure_ratio
+    - gross_exposure_ratio
+    - net_exposure_ratio
+    - input_market_value_partition_sha256
+    - input_cash_balance_record_sha256
+    - input_portfolio_record_sha256
+    - input_prior_metric_record_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - analytics_run_id
+    - calculated_at_utc
+    - contract_version
+
+quality_rules:
+  - rule_id: PORTFOLIO_DAILY_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Portfolio and valuation date are unique together.
+
+  - rule_id: PORTFOLIO_DAILY_INPUT_COVERAGE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Exactly one complete market-value partition, cash record, and canonical portfolio record exist for the portfolio-date.
+
+  - rule_id: PORTFOLIO_DAILY_DATE_ALIGNMENT
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Market-value date and cash date both equal valuation date.
+
+  - rule_id: PORTFOLIO_DAILY_POSITION_COUNTS_RECONCILE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Position count equals long position count plus short position count and matches the market-value partition.
+
+  - rule_id: PORTFOLIO_DAILY_MARKET_VALUES_RECONCILE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Long, short, gross, and net values reconcile independently to the instrument-level market-value rows.
+
+  - rule_id: PORTFOLIO_DAILY_NAV_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Closing NAV equals net security market value plus closing cash balance.
+
+  - rule_id: PORTFOLIO_DAILY_NAV_POSITIVE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Closing NAV and baseline NAV are greater than zero.
+
+  - rule_id: PORTFOLIO_DAILY_BASELINE_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: The inception baseline uses initial NAV; every later baseline uses the prior published closing NAV with matching lineage.
+
+  - rule_id: PORTFOLIO_DAILY_PNL_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Daily PnL equals closing NAV minus baseline NAV.
+
+  - rule_id: PORTFOLIO_DAILY_RETURN_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.000000000000000001'
+    assertion: Daily return equals daily PnL divided by baseline NAV without intermediate rounding.
+
+  - rule_id: PORTFOLIO_DAILY_EXPOSURE_RATIOS_RECONCILE
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    tolerance: '0.000000000000000001'
+    assertion: Long, short, gross, and net exposure ratios equal their corresponding market values divided by closing NAV.
+
+  - rule_id: PORTFOLIO_DAILY_CURRENCY_MATCH
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Portfolio, market-value, and cash currencies are USD.
+
+  - rule_id: PORTFOLIO_DAILY_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_ANALYTICS_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.
+
+publication_policy:
+  atomic_partition: [portfolio_id, valuation_date]
+  publish_only_when_status: SUCCEEDED
+  unchanged_reprocess_behavior: Record the attempt but do not republish an identical canonical row.
+  failed_run_behavior: Preserve the prior canonical row and publish no candidate output.
+
+fixture_policy:
+  source_fixture: data/fixtures/phase_06_analytics_scenario.yml
+  deterministic_examples:
+    - Both portfolios have inception closing NAV of USD 1000000, daily PnL of zero, and daily return of zero.
+    - LONG_SHORT_130_30 inception ratios are 1.30 long, 0.30 short, 1.60 gross, and 1.00 net.
+    - CORE_15_LONG earns positive dividend cash while LONG_SHORT_130_30 owes the WMT short dividend.
+    - A split changes quantity and price inversely and creates no split-only PnL.

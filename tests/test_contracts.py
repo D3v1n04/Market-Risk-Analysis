@@ -15,7 +15,7 @@ CONTRACT_DIR = PROJECT_ROOT / "contracts"
 FIXTURE_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 EXPECTED_CONTRACT_VERSIONS = {
-    "analytics_runs": "1.0.0",
+    "analytics_runs": "1.1.0",
     "cash_balances": "1.1.0",
     "corporate_actions": "1.1.0",
     "daily_prices": "1.1.0",
@@ -24,6 +24,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "ingestion_batches": "2.0.0",
     "instruments": "1.1.0",
     "portfolios": "1.1.0",
+    "portfolio_daily_metrics": "1.0.0",
     "portfolio_record_outcomes": "1.0.0",
     "positions": "1.1.0",
     "position_market_values": "1.0.0",
@@ -1925,3 +1926,72 @@ def test_phase_06_reference_contracts_support_governed_silver_processing() -> No
             rule["disposition"] == "ACCEPT_CORRECTION"
             for rule in rules.values()
         )
+
+
+def test_portfolio_daily_metrics_contract_defines_complete_gold_metrics() -> None:
+    contract = _load_contract("portfolio_daily_metrics")
+    analytics_runs = _load_contract("analytics_runs")
+
+    fields = {
+        field["name"]: field
+        for field in contract["fields"]
+    }
+    rule_ids = {
+        rule["rule_id"]
+        for rule in contract["quality_rules"]
+    }
+    analytics_fields = {
+        field["name"]: field
+        for field in analytics_runs["fields"]
+    }
+
+    assert contract["dataset_class"] == "gold_analytical_fact"
+    assert contract["primary_key"] == [
+        "portfolio_id",
+        "valuation_date",
+    ]
+
+    assert fields["base_currency"]["allowed_values"] == ["USD"]
+    assert fields["short_market_value"]["minimum_inclusive"] == 0
+    assert fields["closing_nav"]["minimum_exclusive"] == 0
+    assert fields["baseline_nav"]["minimum_exclusive"] == 0
+    assert fields["prior_valuation_date"]["nullable"] == "conditional"
+    assert fields["input_prior_metric_record_sha256"]["nullable"] == "conditional"
+
+    assert fields["daily_return"]["unit"] == "decimal_ratio"
+    assert fields["long_exposure_ratio"]["unit"] == "fraction_of_closing_nav"
+    assert fields["short_exposure_ratio"]["unit"] == "fraction_of_closing_nav"
+    assert fields["gross_exposure_ratio"]["unit"] == "fraction_of_closing_nav"
+    assert fields["net_exposure_ratio"]["unit"] == "fraction_of_closing_nav"
+
+    calculation = contract["calculation"]
+    assert calculation["closing_nav_formula"] == (
+        "net_security_market_value + closing_cash_balance"
+    )
+    assert calculation["daily_pnl_formula"] == "closing_nav - baseline_nav"
+    assert calculation["daily_return_formula"] == "daily_pnl / baseline_nav"
+    assert calculation["intermediate_rounding_allowed"] is False
+    assert calculation["external_portfolio_flows_supported"] is False
+
+    assert {
+        "PORTFOLIO_DAILY_INPUT_COVERAGE",
+        "PORTFOLIO_DAILY_POSITION_COUNTS_RECONCILE",
+        "PORTFOLIO_DAILY_MARKET_VALUES_RECONCILE",
+        "PORTFOLIO_DAILY_NAV_RECONCILES",
+        "PORTFOLIO_DAILY_BASELINE_RECONCILES",
+        "PORTFOLIO_DAILY_PNL_RECONCILES",
+        "PORTFOLIO_DAILY_RETURN_RECONCILES",
+        "PORTFOLIO_DAILY_EXPOSURE_RATIOS_RECONCILE",
+        "PORTFOLIO_DAILY_RECORD_HASH_VALID",
+    } <= rule_ids
+
+    publication = contract["publication_policy"]
+    assert publication["atomic_partition"] == [
+        "portfolio_id",
+        "valuation_date",
+    ]
+    assert publication["publish_only_when_status"] == "SUCCEEDED"
+
+    allowed_outputs = analytics_fields["output_dataset_name"]["allowed_values"]
+    assert "POSITION_MARKET_VALUES" in allowed_outputs
+    assert "PORTFOLIO_DAILY_METRICS" in allowed_outputs

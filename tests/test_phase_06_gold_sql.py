@@ -12,6 +12,9 @@ CONTRACT_DIR = PROJECT_ROOT / "contracts"
 
 TABLE_CONTRACTS = {
     "workspace.devin_market_risk_dev.gold_analytics_runs": "analytics_runs",
+    "workspace.devin_market_risk_dev.gold_portfolio_daily_metrics": (
+        "portfolio_daily_metrics"
+    ),
     "workspace.devin_market_risk_dev.gold_position_market_values": (
         "position_market_values"
     ),
@@ -80,8 +83,8 @@ def test_gold_ddl_is_safe_and_unpartitioned() -> None:
     ddl = DDL_PATH.read_text(encoding="utf-8")
     normalized = " ".join(ddl.upper().split())
 
-    assert normalized.count("CREATE TABLE IF NOT EXISTS") == 2
-    assert normalized.count("USING DELTA") == 2
+    assert normalized.count("CREATE TABLE IF NOT EXISTS") == 3
+    assert normalized.count("USING DELTA") == 3
     assert "PARTITIONED BY" not in normalized
 
     for statement in [
@@ -107,6 +110,28 @@ def test_gold_market_value_table_preserves_metric_lineage() -> None:
     assert {
         "input_position_record_sha256",
         "input_price_record_sha256",
+        "analytics_run_id",
+        "calculation_version",
+        "calculated_at_utc",
+        "contract_version",
+        "record_hash",
+    } <= columns.keys()
+    assert "derivation_run_id" not in columns
+    assert "processing_run_id" not in columns
+
+
+def test_gold_portfolio_daily_table_preserves_metric_lineage() -> None:
+    ddl = DDL_PATH.read_text(encoding="utf-8")
+    columns = _column_types(
+        ddl,
+        "workspace.devin_market_risk_dev.gold_portfolio_daily_metrics",
+    )
+
+    assert {
+        "input_market_value_partition_sha256",
+        "input_cash_balance_record_sha256",
+        "input_portfolio_record_sha256",
+        "input_prior_metric_record_sha256",
         "analytics_run_id",
         "calculation_version",
         "calculated_at_utc",

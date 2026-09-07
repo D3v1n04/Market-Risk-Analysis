@@ -1,4 +1,4 @@
-contract_version: 1.0.0
+contract_version: 1.1.0
 dataset: analytics_runs
 dataset_class: operational_audit
 description: Immutable audit evidence for each attempt to calculate one Gold analytical partition from trusted Silver inputs.
@@ -37,7 +37,7 @@ fields:
   - name: output_dataset_name
     type: STRING
     nullable: false
-    allowed_values: [POSITION_MARKET_VALUES]
+    allowed_values: [POSITION_MARKET_VALUES, PORTFOLIO_DAILY_METRICS]
   - name: portfolio_id
     type: STRING
     nullable: false

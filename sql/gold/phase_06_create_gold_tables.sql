@@ -63,3 +63,39 @@ CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.gold_position_market_
 )
 USING DELTA
 COMMENT 'Close-of-business USD valuation for each trusted portfolio position';
+
+
+CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.gold_portfolio_daily_metrics (
+    portfolio_id STRING NOT NULL,
+    valuation_date DATE NOT NULL,
+    base_currency STRING NOT NULL,
+    position_count BIGINT NOT NULL,
+    long_position_count BIGINT NOT NULL,
+    short_position_count BIGINT NOT NULL,
+    long_market_value DECIMAL(38,16) NOT NULL,
+    short_market_value DECIMAL(38,16) NOT NULL,
+    gross_market_value DECIMAL(38,16) NOT NULL,
+    net_security_market_value DECIMAL(38,16) NOT NULL,
+    closing_cash_balance DECIMAL(38,16) NOT NULL,
+    closing_nav DECIMAL(38,16) NOT NULL,
+    baseline_nav DECIMAL(38,16) NOT NULL,
+    baseline_source STRING NOT NULL,
+    prior_valuation_date DATE,
+    daily_pnl DECIMAL(38,16) NOT NULL,
+    daily_return DECIMAL(38,18) NOT NULL,
+    long_exposure_ratio DECIMAL(38,18) NOT NULL,
+    short_exposure_ratio DECIMAL(38,18) NOT NULL,
+    gross_exposure_ratio DECIMAL(38,18) NOT NULL,
+    net_exposure_ratio DECIMAL(38,18) NOT NULL,
+    input_market_value_partition_sha256 STRING NOT NULL,
+    input_cash_balance_record_sha256 STRING NOT NULL,
+    input_portfolio_record_sha256 STRING NOT NULL,
+    input_prior_metric_record_sha256 STRING,
+    analytics_run_id STRING NOT NULL,
+    calculation_version STRING NOT NULL,
+    calculated_at_utc TIMESTAMP NOT NULL,
+    contract_version STRING NOT NULL,
+    record_hash STRING NOT NULL
+)
+USING DELTA
+COMMENT 'Audited close-of-business USD portfolio performance and exposure metrics';
