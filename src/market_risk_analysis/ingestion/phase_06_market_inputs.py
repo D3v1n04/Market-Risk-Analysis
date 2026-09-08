@@ -4,16 +4,72 @@ import argparse
 import csv
 import hashlib
 from collections.abc import Mapping, Sequence
+from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 SCENARIO_PATH = Path("data/fixtures/phase_06_analytics_scenario.yml")
+HISTORY_PATH = Path("data/fixtures/phase_07_risk_history.yml")
 INSTRUMENTS_PATH = Path("data/fixtures/instruments.csv")
 DEFAULT_OUTPUT_ROOT = Path("data/raw/phase_06_analytics_foundation")
 SOURCE_ID = "PROJECT_GIT_FIXTURE"
 NULL_TOKEN = "<NULL>"
+
+
+US_EQUITIES_2016_HOLIDAYS = frozenset(
+    {
+        date(2016, 1, 1),
+        date(2016, 1, 18),
+        date(2016, 2, 15),
+        date(2016, 3, 25),
+        date(2016, 5, 30),
+        date(2016, 7, 4),
+        date(2016, 9, 5),
+        date(2016, 11, 24),
+        date(2016, 12, 26),
+    }
+)
+
+
+def build_history_trading_dates(history: Mapping[str, Any]) -> list[str]:
+    window = _require_mapping(history["history_window"], "history_window")
+    calendar_version = _require_string(
+        window["trading_calendar_version"],
+        "history trading_calendar_version",
+    )
+    if calendar_version != "US_EQUITIES_2016_V1":
+        raise ValueError(f"Unsupported history calendar version: {calendar_version}")
+
+    start_date = date.fromisoformat(
+        _require_string(window["start_date"], "history start_date")
+    )
+    end_date = date.fromisoformat(
+        _require_string(window["end_date"], "history end_date")
+    )
+    if end_date < start_date:
+        raise ValueError("History end_date must be on or after start_date")
+
+    dates: list[str] = []
+    current_date = start_date
+    while current_date <= end_date:
+        if (
+            current_date.weekday() < 5
+            and current_date not in US_EQUITIES_2016_HOLIDAYS
+        ):
+            dates.append(current_date.isoformat())
+        current_date += timedelta(days=1)
+
+    expected_count = int(window["expected_trading_date_count"])
+    if len(dates) != expected_count:
+        raise ValueError(
+            "Unexpected history trading-date count: "
+            f"actual={len(dates)} expected={expected_count}"
+        )
+    return dates
+
 
 DAILY_PRICE_FIELDS = (
     "instrument_id",
@@ -84,6 +140,30 @@ def _require_string(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be a nonempty string")
     return value
+
+
+def validate_history_anchor(
+    *,
+    history: Mapping[str, Any],
+    anchor_source_path: Path,
+) -> None:
+    anchor = _require_mapping(history["anchor"], "history anchor")
+    source_fixture = _require_string(
+        anchor["source_fixture"],
+        "history anchor source_fixture",
+    )
+    if source_fixture != SCENARIO_PATH.as_posix():
+        raise ValueError("History anchor source fixture is unsupported")
+
+    expected_sha256 = _require_string(
+        anchor["source_sha256"],
+        "history anchor source_sha256",
+    )
+    actual_sha256 = hashlib.sha256(anchor_source_path.read_bytes()).hexdigest()
+    if actual_sha256 != expected_sha256:
+        raise ValueError(
+            "History anchor source SHA-256 does not match the pinned fixture"
+        )
 
 
 def _record_hash(row: Mapping[str, str], fields: Sequence[str]) -> str:
@@ -184,6 +264,8 @@ def _resolve_series(
 def build_daily_price_rows(
     scenario: Mapping[str, Any],
     instrument_symbols: Mapping[str, str],
+    *,
+    history: Mapping[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     instrument_ids = [
         _require_string(value, "scenario instrument_id")
@@ -251,7 +333,162 @@ def build_daily_price_rows(
             row["record_hash"] = _record_hash(row, DAILY_PRICE_HASH_FIELDS)
             rows.append(row)
 
+    if history is None:
+        return rows
+
+    history_currency = _require_string(history["currency"], "history currency")
+    if history_currency != quote_currency:
+        raise ValueError("History and Phase 06 quote currencies differ")
+
+    anchor = _require_mapping(history["anchor"], "history anchor")
+    anchor_date = _require_string(anchor["anchor_date"], "history anchor_date")
+    if anchor_date != ordered_dates[-1]:
+        raise ValueError("History anchor_date must equal the final Phase 06 date")
+
+    price_path = _require_mapping(history["price_path"], "history price_path")
+    if price_path.get("generator") != "DETERMINISTIC_FACTOR_PATH_V1":
+        raise ValueError("Unsupported deterministic history generator")
+    seed = _require_string(price_path["seed"], "history price-path seed")
+    history_id = _require_string(history["history_id"], "history_id")
+
+    history_dates = build_history_trading_dates(history)
+    if set(ordered_dates) - set(history_dates):
+        raise ValueError("Phase 06 dates are absent from the history date spine")
+
+    extension_dates = [
+        price_date for price_date in history_dates if price_date not in raw_close
+    ]
+    expected_extension_count = int(
+        _require_mapping(history["history_window"], "history_window")[
+            "expected_extension_trading_date_count"
+        ]
+    )
+    if len(extension_dates) != expected_extension_count:
+        raise ValueError("Unexpected deterministic history extension-date count")
+
+    expected_price_count = int(
+        _require_mapping(history["history_window"], "history_window")[
+            "expected_price_record_count"
+        ]
+    )
+
+    raw_prices = {
+        instrument_id: Decimal(raw_close[anchor_date][instrument_id])
+        for instrument_id in instrument_ids
+    }
+    adjusted_multipliers = {
+        instrument_id: (
+            Decimal(adjusted_close[anchor_date][instrument_id])
+            / Decimal(raw_close[anchor_date][instrument_id])
+        )
+        for instrument_id in instrument_ids
+    }
+
+    for date_index, price_date in enumerate(extension_dates, start=1):
+        for instrument_id in instrument_ids:
+            return_ratio = _deterministic_return_ratio(
+                seed=seed,
+                instrument_id=instrument_id,
+                price_date=price_date,
+                date_index=date_index,
+            )
+            raw_prices[instrument_id] = (
+                raw_prices[instrument_id] * (Decimal("1") + return_ratio)
+            ).quantize(PRICE_SCALE, rounding=ROUND_HALF_UP)
+
+            close_price = _format_price(raw_prices[instrument_id])
+            adjusted_close_price = _format_price(
+                raw_prices[instrument_id] * adjusted_multipliers[instrument_id]
+            )
+            row = {
+                "instrument_id": instrument_id,
+                "price_date": price_date,
+                "source_id": SOURCE_ID,
+                "source_symbol": instrument_symbols[instrument_id],
+                "open_price": close_price,
+                "high_price": close_price,
+                "low_price": close_price,
+                "close_price": close_price,
+                "adjusted_close_price": adjusted_close_price,
+                "volume": volume,
+                "quote_currency": quote_currency,
+                "source_updated_at_utc": "",
+                "source_record_id": (
+                    f"{history_id}:DAILY_PRICES:{instrument_id}:{price_date}"
+                ),
+                "record_hash": "",
+            }
+            row["record_hash"] = _record_hash(row, DAILY_PRICE_HASH_FIELDS)
+            rows.append(row)
+
+    if len(rows) != expected_price_count:
+        raise ValueError(
+            f"Unexpected daily-price count: actual={len(rows)} "
+            f"expected={expected_price_count}"
+        )
     return rows
+
+
+PRICE_SCALE = Decimal("0.00000001")
+
+CLUSTER_BY_INSTRUMENT = {
+    "NVDA_US": "TECH",
+    "AAPL_US": "TECH",
+    "GOOGL_US": "TECH",
+    "MSFT_US": "TECH",
+    "TSM_US": "SEMIS",
+    "AVGO_US": "SEMIS",
+    "AMZN_US": "CONSUMER",
+    "WMT_US": "CONSUMER",
+    "LLY_US": "HEALTHCARE",
+    "UNH_US": "HEALTHCARE",
+    "JPM_US": "FINANCIALS",
+    "BRK_B_US": "FINANCIALS",
+    "XOM_US": "MACRO",
+    "TSLA_US": "MACRO",
+    "LMT_US": "MACRO",
+}
+
+
+def _signed_basis_points(*, seed: str, label: str, magnitude: int) -> int:
+    digest = hashlib.sha256(f"{seed}|{label}".encode()).hexdigest()
+    return int(digest[:8], 16) % (2 * magnitude + 1) - magnitude
+
+
+def _deterministic_return_ratio(
+    *,
+    seed: str,
+    instrument_id: str,
+    price_date: str,
+    date_index: int,
+) -> Decimal:
+    if date_index % 29 == 0:
+        return Decimal("0")
+
+    cluster = CLUSTER_BY_INSTRUMENT[instrument_id]
+    market_bps = _signed_basis_points(
+        seed=seed,
+        label=f"MARKET|{price_date}",
+        magnitude=120,
+    )
+    cluster_bps = _signed_basis_points(
+        seed=seed,
+        label=f"CLUSTER|{cluster}|{price_date}",
+        magnitude=55,
+    )
+    instrument_bps = _signed_basis_points(
+        seed=seed,
+        label=f"INSTRUMENT|{instrument_id}|{price_date}",
+        magnitude=35,
+    )
+    return Decimal(market_bps + cluster_bps + instrument_bps) / Decimal("10000")
+
+
+def _format_price(value: Decimal) -> str:
+    return format(
+        value.quantize(PRICE_SCALE, rounding=ROUND_HALF_UP),
+        "f",
+    )
 
 
 def build_corporate_action_rows(
@@ -317,8 +554,17 @@ def materialize_market_inputs(
     output_root: Path,
 ) -> dict[str, dict[str, Any]]:
     scenario = load_scenario(project_root / SCENARIO_PATH)
+    history = load_scenario(project_root / HISTORY_PATH)
+    validate_history_anchor(
+        history=history,
+        anchor_source_path=project_root / SCENARIO_PATH,
+    )
     instrument_symbols = load_instrument_symbols(project_root / INSTRUMENTS_PATH)
-    price_rows = build_daily_price_rows(scenario, instrument_symbols)
+    price_rows = build_daily_price_rows(
+        scenario,
+        instrument_symbols,
+        history=history,
+    )
     action_rows = build_corporate_action_rows(scenario, instrument_symbols)
 
     specifications = {

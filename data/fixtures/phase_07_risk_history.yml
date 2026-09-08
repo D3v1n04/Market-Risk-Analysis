@@ -1,0 +1,46 @@
+fixture_version: 1.0.0
+history_id: PHASE_07_DETERMINISTIC_US_EQUITIES_2016
+description: >
+  Deterministic synthetic daily-price history for historical-simulation VaR
+  learning and validation. It is not live or production market data.
+currency: USD
+
+anchor:
+  source_sha256: 2fb0fe28a3d283e66d933ca6187a6869a33392f0526eab37724b549c9209cd00
+  source_fixture: data/fixtures/phase_06_analytics_scenario.yml
+  anchor_date: '2016-01-07'
+  preserve_existing_phase_06_rows: true
+  preserve_existing_corporate_actions: true
+
+history_window:
+  start_date: '2016-01-04'
+  end_date: '2016-12-30'
+  trading_calendar_version: US_EQUITIES_2016_V1
+  expected_trading_date_count: 252
+  expected_extension_trading_date_count: 248
+  expected_instrument_count: 15
+  expected_price_record_count: 3780
+
+price_path:
+  generator: DETERMINISTIC_FACTOR_PATH_V1
+  seed: MARKET_RISK_PHASE_07_2016_V1
+  price_basis: RAW_CLOSE_WITH_EXPLICIT_CORPORATE_ACTIONS
+  adjusted_price_basis: TOTAL_RETURN_REFERENCE_ONLY
+  common_market_component: true
+  cluster_components: true
+  instrument_specific_components: true
+  include_positive_and_negative_returns: true
+  include_flat_returns: true
+  prohibit_live_data: true
+  prohibit_random_runtime_behavior: true
+
+risk_history_policy:
+  holding_period_days: 1
+  confidence_levels: [0.95, 0.99]
+  expected_return_observation_count: 251
+  minimum_return_observation_count: 250
+  classification: DETERMINISTIC_SYNTHETIC_PROJECT_MVP
+  limitation: >
+    This history demonstrates reproducible governed risk calculations. It does
+    not represent real market history and must not be described as production
+    risk evidence.

@@ -20,6 +20,8 @@ GENERATOR_MODULE = (
     "market_risk_analysis.ingestion.phase_06_market_inputs"
 )
 GENERATOR_CODE_VERSION = "f7f6f3d20df8170d4b492e17e26236f251dc47e4"
+HISTORY_OBJECT_PATH = "data/fixtures/phase_07_risk_history.yml"
+HISTORY_PATH = PROJECT_ROOT / HISTORY_OBJECT_PATH
 
 
 def test_generated_market_input_manifest_preserves_full_lineage(
@@ -40,17 +42,17 @@ def test_generated_market_input_manifest_preserves_full_lineage(
         dataset_name="DAILY_PRICES",
         source_id="PROJECT_GIT_FIXTURE",
         source_contract_version="1.1.0",
-        generation_source_path=SCENARIO_PATH,
-        generation_source_object_path=SCENARIO_OBJECT_PATH,
+        generation_source_path=HISTORY_PATH,
+        generation_source_object_path=HISTORY_OBJECT_PATH,
         generator_module=GENERATOR_MODULE,
         generator_code_version=GENERATOR_CODE_VERSION,
     )
 
-    assert manifest["source_record_count"] == 60
+    assert manifest["source_record_count"] == 3780
     assert manifest["source_sha256"] == price_result["source_sha256"]
     assert manifest["generation"] == {
-        "source_object_path": SCENARIO_OBJECT_PATH,
-        "source_sha256": calculate_sha256(SCENARIO_PATH),
+        "source_object_path": HISTORY_OBJECT_PATH,
+        "source_sha256": calculate_sha256(HISTORY_PATH),
         "generator_module": GENERATOR_MODULE,
         "generator_code_version": GENERATOR_CODE_VERSION,
     }
