@@ -53,14 +53,12 @@ def test_market_landing_validation_pins_complete_evidence() -> None:
 
     prices = specifications["DAILY_PRICES"]
     assert prices["source_sha256"] == (
-        "d02d4a5fdb8543a2482a354b484b2279"
-        "4552cb9795942fbaf9f82e2c83d7c488"
+        "219e106b3d8c027965d317ea992c3405881ebbc9eee0678c9ed66270bd81a5a3"
     )
     assert prices["manifest_sha256"] == (
-        "bf50d119ff5da5801c3ed31195db7ae2"
-        "81516f9988129f31f5441415f3e0d1b8"
+        "65069509e6cc95203174a5f2fcdc61fa66f2ea3504be138fbb566d11eab3689a"
     )
-    assert prices["expected_record_count"] == 60
+    assert prices["expected_record_count"] == 3780
     assert prices["expected_column_count"] == 14
     assert prices["bronze_table"].endswith(".bronze_daily_prices")
 
@@ -82,17 +80,16 @@ def test_market_landing_validation_pins_complete_evidence() -> None:
 
 def test_market_landing_validation_pins_generation_lineage() -> None:
     assert _literal_assignment("GENERATION_SOURCE_OBJECT_PATH") == (
-        "data/fixtures/phase_06_analytics_scenario.yml"
+        "data/fixtures/phase_07_risk_history.yml"
     )
     assert _literal_assignment("GENERATION_SOURCE_SHA256") == (
-        "2fb0fe28a3d283e66d933ca6187a6869"
-        "a33392f0526eab37724b549c9209cd00"
+        "9fb768b79dcdd74dd9b76b0408fae4c3d88a40635e440746064214043e6b2a1e"
     )
     assert _literal_assignment("GENERATOR_MODULE") == (
         "market_risk_analysis.ingestion.phase_06_market_inputs"
     )
     assert _literal_assignment("GENERATOR_CODE_VERSION") == (
-        "ebb82db39e16466363f82adeca3529d816345ff9"
+        "5f31a75fc04afd63fd28224d663dc5cc7de2cac6"
     )
 
     source = _read_notebook()
@@ -119,13 +116,15 @@ def test_market_landing_validation_checks_grid_and_rules() -> None:
     }
     assert all(check in source for check in required_checks)
 
-    assert _literal_assignment("EXPECTED_PRICE_DATES") == (
-        "2016-01-04",
-        "2016-01-05",
-        "2016-01-06",
-        "2016-01-07",
-    )
-    assert '"expected_grid=15_instruments_x_4_dates"' in source
+    assert _literal_assignment("EXPECTED_PRICE_DATE_COUNT") == 252
+
+    assert "EXPECTED_PRICE_START_DATE = date(2016, 1, 4)" in source
+    assert "EXPECTED_PRICE_END_DATE = date(2016, 12, 30)" in source
+    assert "def build_expected_price_dates()" in source
+    assert "date(2016, 1, 18)" in source
+    assert "date(2016, 11, 24)" in source
+    assert '"expected_grid="' in source
+    assert 'f"15_instruments_x_{EXPECTED_PRICE_DATE_COUNT}_dates"' in source
     assert "calculate_record_hash(" in source
 
 

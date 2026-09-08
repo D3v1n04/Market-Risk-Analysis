@@ -5,7 +5,7 @@ import csv
 import hashlib
 import json
 from collections import Counter, defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from io import StringIO
 from pathlib import Path
@@ -18,25 +18,50 @@ LANDING_ROOT = Path(
     "/Volumes/workspace/devin_market_risk_dev/bronze_landing"
 )
 SOURCE_ID = "PROJECT_GIT_FIXTURE"
-GENERATION_SOURCE_OBJECT_PATH = (
-    "data/fixtures/phase_06_analytics_scenario.yml"
-)
-GENERATION_SOURCE_SHA256 = (
-    "2fb0fe28a3d283e66d933ca6187a6869"
-    "a33392f0526eab37724b549c9209cd00"
-)
+GENERATION_SOURCE_OBJECT_PATH = "data/fixtures/phase_07_risk_history.yml"
+GENERATION_SOURCE_SHA256 = "9fb768b79dcdd74dd9b76b0408fae4c3d88a40635e440746064214043e6b2a1e"  # noqa: E501
 GENERATOR_MODULE = (
     "market_risk_analysis.ingestion.phase_06_market_inputs"
 )
-GENERATOR_CODE_VERSION = (
-    "ebb82db39e16466363f82adeca3529d816345ff9"
+GENERATOR_CODE_VERSION = "5f31a75fc04afd63fd28224d663dc5cc7de2cac6"
+EXPECTED_PRICE_START_DATE = date(2016, 1, 4)
+EXPECTED_PRICE_END_DATE = date(2016, 12, 30)
+EXPECTED_PRICE_DATE_COUNT = 252
+
+US_EQUITIES_2016_HOLIDAYS = frozenset(
+    {
+        date(2016, 1, 1),
+        date(2016, 1, 18),
+        date(2016, 2, 15),
+        date(2016, 3, 25),
+        date(2016, 5, 30),
+        date(2016, 7, 4),
+        date(2016, 9, 5),
+        date(2016, 11, 24),
+        date(2016, 12, 26),
+    }
 )
-EXPECTED_PRICE_DATES = (
-    "2016-01-04",
-    "2016-01-05",
-    "2016-01-06",
-    "2016-01-07",
-)
+
+
+def build_expected_price_dates() -> tuple[str, ...]:
+    """Return the approved 2016 US-equities trading-date spine."""
+    dates: list[str] = []
+    current_date = EXPECTED_PRICE_START_DATE
+
+    while current_date <= EXPECTED_PRICE_END_DATE:
+        if (
+            current_date.weekday() < 5
+            and current_date not in US_EQUITIES_2016_HOLIDAYS
+        ):
+            dates.append(current_date.isoformat())
+        current_date += timedelta(days=1)
+
+    if len(dates) != EXPECTED_PRICE_DATE_COUNT:
+        raise ValueError("Unexpected approved price-date count")
+    return tuple(dates)
+
+
+EXPECTED_PRICE_DATES = build_expected_price_dates()
 
 MARKET_SOURCES = (
     {
@@ -46,16 +71,10 @@ MARKET_SOURCES = (
         "source_object_path": (
             "data/raw/phase_06_analytics_foundation/daily_prices.csv"
         ),
-        "source_sha256": (
-            "d02d4a5fdb8543a2482a354b484b2279"
-            "4552cb9795942fbaf9f82e2c83d7c488"
-        ),
-        "manifest_sha256": (
-            "bf50d119ff5da5801c3ed31195db7ae2"
-            "81516f9988129f31f5441415f3e0d1b8"
-        ),
+        "source_sha256": "219e106b3d8c027965d317ea992c3405881ebbc9eee0678c9ed66270bd81a5a3",  # noqa: E501
+        "manifest_sha256": "65069509e6cc95203174a5f2fcdc61fa66f2ea3504be138fbb566d11eab3689a",  # noqa: E501
         "source_contract_version": "1.1.0",
-        "expected_record_count": 60,
+        "expected_record_count": 3780,
         "expected_column_count": 14,
         "bronze_table": (
             "workspace.devin_market_risk_dev.bronze_daily_prices"
@@ -431,7 +450,10 @@ def validate_daily_prices(source_rows: list[dict[str, str]]) -> None:
         )
 
     print("DAILY_PRICES record_validation=PASS")
-    print("expected_grid=15_instruments_x_4_dates")
+    print(
+        "expected_grid="
+        f"15_instruments_x_{EXPECTED_PRICE_DATE_COUNT}_dates"
+    )
     print(f"validated_grid_count={len(source_rows)}")
 
 
