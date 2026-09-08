@@ -2,25 +2,29 @@
 
 ## Status
 
-Phase 06 is in progress.
+Phase 06 is complete at validated implementation checkpoint `632adc0`.
+Runtime validation, independent reconciliation, and the learner explain-back passed.
+Phase 07 — Risk Measures and Validation is next and has not started.
 
 The phase is divided into two explicit checkpoints:
 
-- Phase 6A — Trusted Analytics Input Enablement
-- Phase 6B — Gold Metric Implementation
+- Phase 6A — Trusted Analytics Input Enablement: complete
+- Phase 6B — Gold Metric Implementation: complete
 
-Gold calculations must not begin until the Phase 6A dependency gate passes.
+The Phase 6A dependency gate passed before Phase 6B Gold calculations.
 
 ## Purpose
 
 Build explainable and reconciled Gold analytics from trusted Silver data.
 
-Phase 6A will create the missing deterministic analytical inputs at their correct
-medallion-layer responsibilities. Phase 6B will calculate market value, returns,
+Phase 6A created the missing deterministic analytical inputs at their correct
+medallion-layer responsibilities. Phase 6B calculated market value, returns,
 daily P&L, long exposure, short exposure, gross exposure, net exposure, and
 approved exposure ratios.
 
 ## Verified starting baseline
+
+This is the historical baseline at `944fc12`, not the completed platform state.
 
 - Git branch: `phase-06-gold-analytics-foundation`
 - Starting commit: `944fc12`
@@ -60,8 +64,9 @@ Silver validates and canonicalizes supplied records. Silver may also contain
 deterministic derived business facts, such as positions and cash balances, when
 their inputs, formulas, dates, versions, and lineage are explicit.
 
-Gold consumes trusted Silver data and calculates business-ready analytical
-measures. Gold must not bypass Silver to compensate for missing dependencies.
+Gold consumes governed Silver and previously published Gold when dependencies and
+lineage are explicit, and calculates business-ready analytical measures. Gold never
+reads Bronze directly or bypasses Silver to compensate for missing dependencies.
 
 ## Approved allocation source
 
@@ -92,12 +97,11 @@ Multi-currency valuation remains outside the current MVP.
 
 ## Inception dependency
 
-Both canonical portfolios currently have a null `actual_inception_date`.
-
-The date may be populated only after validated deterministic prices establish the
-earliest common trading session with complete price coverage for all 15 active
-instruments. Any portfolio correction must pass through the existing governed
-Bronze-to-Silver process with a higher valid configuration version.
+Both canonical portfolios started with a null `actual_inception_date`. Validated
+deterministic prices established `2016-01-04` as the earliest common trading session
+with complete coverage for all 15 active instruments. The date was established
+through the governed Bronze-to-Silver correction path with a higher valid
+configuration version. Gold consumed the governed date; it did not invent it.
 
 ## Cash and NAV dependency
 
@@ -110,13 +114,13 @@ current NAV = signed position market value + closing cash balance
 
 ```
 
-The cash-balance design must reconcile opening cash, approved daily cash movements,
+The cash-balance design reconciles opening cash, approved daily cash movements,
 and closing cash. Unsupported fees, interest, taxes, and external cash flows remain
 excluded from the MVP.
 
 ## Audit requirements
 
-Phase 6A must retain:
+Phase 6A retained:
 
 - Source and fixture lineage
 - Stable business keys
@@ -130,6 +134,72 @@ Phase 6A must retain:
 
 The existing Bronze and Silver portfolio records must remain governed upstream
 evidence.
+
+## Completed Gold metrics
+
+Both portfolios use USD and the approved close-of-business valuation dates
+`2016-01-04` through `2016-01-07`. Monetary metrics are USD; returns and exposure
+ratios are dimensionless. Local and base-currency market values are equal.
+
+| Metric or convention | Definition |
+| --- | --- |
+| Instrument-market-value grain | One portfolio × one instrument × one valuation date |
+| Portfolio-daily grain | One portfolio × one valuation date |
+| `signed_market_value` | `signed_quantity × close_price` |
+| `long_market_value` | Sum of positive signed instrument market values |
+| `short_market_value` | Positive magnitude of short market value |
+| `gross_market_value` | `long_market_value + short_market_value` |
+| `net_security_market_value` | `long_market_value - short_market_value` |
+| `closing_nav` | `net_security_market_value + closing_cash_balance` |
+| `daily_pnl` | `closing_nav - baseline_nav` |
+| `daily_return` | `daily_pnl / baseline_nav` |
+| Inception baseline | `portfolios.initial_nav` |
+| Later baseline | Previous published `portfolio_daily_metrics.closing_nav` |
+| Exposure ratios | Corresponding security market value divided by `closing_nav` |
+
+## Completion evidence
+
+The persistent Gold Delta tables are:
+
+- `workspace.devin_market_risk_dev.gold_analytics_runs`
+- `workspace.devin_market_risk_dev.gold_position_market_values`
+- `workspace.devin_market_risk_dev.gold_portfolio_daily_metrics`
+
+| Check | Instrument market values | Portfolio-daily metrics |
+| --- | --- | --- |
+| Canonical rows and distinct business keys | 120 and 120 | 8 and 8 |
+| Coverage | 2 portfolios × 15 instruments × 4 dates | 2 portfolios × 4 dates |
+| Formula reconciliation failures | 0 market-value formula, absolute-value, or sign failures | 0 gross, net, NAV, P&L, baseline, return, or exposure-ratio failures |
+| Succeeded audit attempts | 9 | 10 |
+| Published partitions | 8 | 8 |
+| Unchanged nonpublished reprocesses | 1 | 2 |
+| Linked reprocesses | 1 | 2 |
+
+`CORE_15_LONG` began with USD 1,000,000 NAV. January 5 market P&L was positive
+USD 7,499.999997; January 6 WMT dividend cash and P&L were positive USD 650.
+Ending NAV change and cumulative P&L both equaled USD 8,149.999997.
+
+`LONG_SHORT_130_30` began at 130% long, 30% short magnitude, 160% gross, and
+100% net exposure. January 5 P&L was positive USD 40,440; January 6 WMT
+short-dividend cash obligation and P&L were negative USD 1,000. Ending NAV change
+and cumulative P&L both equaled USD 39,440.
+
+NVDA's 2-for-1 split doubled quantity and halved price, preserving market value
+and producing zero split-only P&L. Cumulative daily P&L reconciled exactly to ending
+NAV minus initial NAV for both portfolios. Identical reruns created immutable audit
+attempts without republishing unchanged canonical Gold rows; SHA-256 idempotency
+evidence supports unchanged content rather than row counts alone.
+
+The local quality gate passed Ruff, 198 pytest tests, and 11/11 environment checks.
+These local checks complement the supplied runtime and independent reconciliation
+evidence; they do not replace Databricks execution.
+
+The learner passed the explain-back on the 120-row versus 8-row grains, signed short
+value versus positive short magnitude, gross/net calculations, NAV/P&L/return and
+their baselines, long dividends versus short obligations, positive and negative cash
+effects on exposure ratios, audit-only reruns, SHA-256 evidence, and split invariance.
+See the [Phase 06 handoff](handoffs/phase-06-handoff.md) for the knowledge check and
+Phase 07 readiness.
 
 ## Phase boundaries
 

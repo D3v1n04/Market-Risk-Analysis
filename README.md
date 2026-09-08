@@ -6,20 +6,21 @@ risk analytics.
 
 ## Current milestone
 
-Phases 01 through 05 are complete.
+Phases 01 through 06 are complete.
 
-Phase 05 implemented contract-aligned Silver processing for the controlled Bronze
-portfolio dataset. The project now casts preserved source strings into documented
-types, evaluates structural and business-quality rules, resolves duplicate and
-canonical versions deterministically, records outcomes and violations, gates
-publication, and maintains processing-run audit lineage.
+Phase 06 enabled governed deterministic instruments, target allocations, daily
+prices, corporate actions, a trading calendar, daily positions, and daily cash
+balances. Gold now publishes 120 instrument market-value rows and 8 portfolio-daily
+metric rows for two USD portfolios across `2016-01-04` through `2016-01-07`.
 
-Two typed and uniquely keyed portfolio records are canonical in Silver. A failed
-persistence attempt was preserved and linked to a successful recovery, and an
-identical reprocessing attempt accepted zero new records, classified both records as
-unchanged, and left the canonical count and SHA-256 fingerprint unchanged.
+Market values, exposures, NAV, P&L, and returns passed runtime validation and
+independent reconciliation. Dividend signs, stock-split invariance, and unchanged
+reruns reconcile; identical reruns retain immutable audit attempts without
+republishing unchanged canonical rows. The learner passed the explain-back.
 
-The project does not retrieve live market data or calculate Gold analytics yet.
+The validated implementation checkpoint is `632adc0`. The local quality gate passed
+Ruff, 198 pytest tests, and 11/11 environment checks. Live market-data retrieval
+remains outside the completed scope.
 
 ## Quick start
 
@@ -60,8 +61,10 @@ Useful commands:
 ├── docs/                         # Learning guides, decisions, and handoffs
 ├── notebooks/bronze/             # Git-backed Databricks Bronze ingestion
 ├── notebooks/silver/             # Git-backed Databricks Silver processing
+├── notebooks/gold/               # Audited Gold market values and daily metrics
 ├── sql/bronze/                   # Bronze object definitions and verification
 ├── sql/silver/                   # Silver object definitions
+├── sql/gold/                     # Gold object definitions
 ├── src/market_risk_analysis/     # Installable Python application code
 ├── tests/                        # Automated behavior and structure checks
 ├── Makefile                      # Short developer commands
@@ -90,14 +93,18 @@ left the canonical SHA-256 fingerprint unchanged.
 - [Progress tracker](docs/progress.md) records the current phase and evidence.
 - [Phase 05 handoff](docs/handoffs/phase-05-handoff.md) records the Silver
   implementation, validation, recovery, idempotency, and Phase 06 readiness.
+- [Phase 06 handoff](docs/handoffs/phase-06-handoff.md) records the completed Gold
+  analytics, reconciliation, explain-back, and Phase 07 readiness.
+- [Phase 06 guide](docs/phase-06-gold-analytics-foundation.md) defines the governed
+  dependencies, metric conventions, and completion evidence.
 - [Phase handoff template](docs/phase-handoff-template.md) defines the handoff
   structure.
 
 ## Current phase boundary
 
-The next phase is Phase 06 — Gold Analytics Foundation. Gold will join trusted data
-at explicit grains and calculate documented market values, returns, P&L, and
-portfolio exposure measures.
+The next phase is Phase 07 — Risk Measures and Validation; it has not started.
+Gold may consume governed Silver and previously published Gold when dependencies
+and lineage are explicit. Gold never reads Bronze directly.
 
-Live market-data retrieval, Gold risk calculations, Power BI work, and FastAPI
-development have not started.
+Multi-currency FX, VaR, production stress calculations, Power BI, scheduling, live
+retrieval, and StockTracker changes remain outside Phase 06.

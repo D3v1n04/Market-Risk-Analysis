@@ -3,19 +3,20 @@
 ## Current position
 
 - **Current phase:** Phase 06 — Gold Analytics Foundation
-- **Status:** In progress
-- **Next gate:** Complete Phase 6A trusted analytics input enablement before
-  creating Gold calculations
-- **Last updated:** 2026-09-04
+- **Status:** Complete
+- **Next phase:** Phase 07 — Risk Measures and Validation (not started)
+- **Last updated:** 2026-09-08
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
 Databricks baselines were verified: two Bronze tables, four Silver tables, two
 canonical portfolios, three Silver processing runs, and no Gold tables.
 
-The dependency review proved that canonical portfolios alone cannot support honest
-Gold calculations. Phase 6A will therefore create the approved deterministic
-instrument, allocation, calendar, price, corporate-action, position, and cash
-dependencies before Phase 6B implements Gold metrics.
+Phase 6A completed the governed deterministic instrument, allocation, calendar,
+price, corporate-action, position, and cash dependencies. Phase 6B published and
+reconciled 120 instrument market-value rows and 8 portfolio-daily rows at checkpoint
+`632adc0`. Runtime validation, independent reconciliation, and the learner
+explain-back passed. The [Phase 06 handoff](handoffs/phase-06-handoff.md) records
+the completed evidence and Phase 07 readiness.
 
 ## Status definitions
 
@@ -37,7 +38,7 @@ dependencies before Phase 6B implements Gold metrics.
 | 03 | Risk Requirements and Data Contracts | Complete | `9cec282` — completed handoff |
 | 04 | Bronze Ingestion | Complete | `bf08e36` — ingestion verification |
 | 05 | Silver Quality and Canonical Data | Complete | `0d09a6a` — canonical merge target alias fix |
-| 06 | Gold Analytics Foundation | In progress | Not committed |
+| 06 | Gold Analytics Foundation | Complete | `632adc0` — audited Gold portfolio daily metrics v2 |
 | 07 | Risk Measures and Validation | Not started | — |
 | 08 | SQL Serving and DBeaver QA | Not started | — |
 | 09 | Power BI Semantic Model | Not started | — |
@@ -97,14 +98,18 @@ dependencies before Phase 6B implements Gold metrics.
 | Qualify joined duplicate columns and alias Delta merge targets | Spark and Delta resolve column references only when their intended relation is explicit |
 | Hash ordered canonical snapshots for idempotency proof | Matching counts alone cannot prove that record content is unchanged |
 
-## Open confirmations for Phase 06
+## Phase 07 readiness
 
-- Complete the Phase 05 documentation commit and synchronize the branch.
-- Reconfirm the four Silver table counts and canonical fingerprint before building
-  on them.
-- Define every Gold metric's grain, unit, currency, sign convention, and as-of date.
-- Reconcile Gold calculations independently and do not begin live market-data
-  retrieval, Power BI work, or later-phase risk measures.
+- Phase 06 has no open completion blockers; Phase 07 has not started.
+- Governed Silver inputs and published Gold market values, NAV, P&L, returns, and
+  exposures are available with explicit grain, currency, dates, and lineage.
+- Verify the Phase 06 documentation commit, branch status, current canonical counts,
+  and audit evidence before changing code or data.
+- Agree historical VaR confidence levels, history requirements, loss signs, stress
+  assumptions, and independent validation examples before implementation. The four
+  deterministic valuation dates prove Phase 06 behavior, not sufficient risk history.
+- Keep multi-currency FX, Power BI, scheduling, live retrieval, and StockTracker
+  changes outside this handoff's completed scope.
 
 ## Evidence log
 
@@ -167,6 +172,20 @@ Add evidence here only after it is produced on the learner's environment.
 | 2026-09-04 | 05 | Final Silver reconciliation | Pass | 2 active unique canonical portfolios, 3 processing runs, 6 record outcomes, and 6 missing-inception-date warnings were persisted; Bronze was not modified |
 | 2026-09-04 | 05 | Explain-back knowledge check | Pass | Learner explained Bronze versus Silver, `TRY_CAST`, warnings versus outcomes, unchanged reruns, per-table Delta atomicity, recovery lineage, and explicit aliases |
 
+Phase 06 evidence below was recorded on 2026-09-07 from the supplied completion
+evidence; this date does not assert the execution date of each runtime attempt.
+
+| Date recorded | Phase | Check | Result | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-09-07 | 06 | Local quality gate | Pass | Ruff passed, 198 pytest tests passed, and 11/11 environment checks passed at validated checkpoint `632adc0` |
+| 2026-09-07 | 06 | Trusted input enablement | Pass | Seven deterministic dependencies completed; both USD portfolios have governed inception `2016-01-04` |
+| 2026-09-07 | 06 | Instrument reconciliation | Pass | 120 rows and distinct keys, 2 portfolios, 15 instruments per portfolio-date, 4 dates; zero formula, absolute-value, or sign failures |
+| 2026-09-07 | 06 | Portfolio reconciliation | Pass | 8 rows and distinct keys; zero gross, net, NAV, P&L, baseline, return, or exposure-ratio failures |
+| 2026-09-07 | 06 | Market-value audit | Pass | 9 succeeded attempts, 8 published partitions, 1 unchanged nonpublished reprocess, 1 linked reprocess |
+| 2026-09-07 | 06 | Portfolio-daily audit | Pass | 10 succeeded attempts, 8 published partitions, 2 unchanged nonpublished reprocesses, 2 linked reprocesses |
+| 2026-09-07 | 06 | Independent economic checks | Pass | Cumulative P&L equals ending minus initial NAV exactly: USD 8,149.999997 long-only and USD 39,440 long-short; WMT dividend signs and NVDA split invariance reconcile |
+| 2026-09-07 | 06 | Explain-back | Pass | Learner explained grains, signs, gross/net, NAV/P&L/return baselines, dividends, cash effects, audit-only reruns, SHA-256 evidence, and split invariance |
+
 ## Handoffs
 
 Completed phase handoffs belong in `docs/handoffs/` and use
@@ -180,6 +199,8 @@ Completed phase handoffs belong in `docs/handoffs/` and use
   lineage, idempotency, validation evidence, knowledge check, and Phase 05 readiness
 - `docs/handoffs/phase-05-handoff.md` — Phase 05 validation, canonicalization,
   runtime recovery, idempotency evidence, knowledge check, and Phase 06 readiness
+- `docs/handoffs/phase-06-handoff.md` — Phase 06 governed inputs, Gold metrics,
+  runtime and independent reconciliation, explain-back, and Phase 07 readiness
 
 ## New-chat kickoff prompt
 
