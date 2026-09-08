@@ -2,7 +2,7 @@
 """Validate and canonicalize one Phase 06 Bronze market-data batch."""
 
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -35,12 +35,44 @@ SILVER_CALENDAR_TABLE = (
     "workspace.devin_market_risk_dev.silver_trading_calendar"
 )
 
-PRICE_DATES = (
-    date(2016, 1, 4),
-    date(2016, 1, 5),
-    date(2016, 1, 6),
-    date(2016, 1, 7),
+EXPECTED_PRICE_START_DATE = date(2016, 1, 4)
+EXPECTED_PRICE_END_DATE = date(2016, 12, 30)
+EXPECTED_PRICE_DATE_COUNT = 252
+
+US_EQUITIES_2016_HOLIDAYS = frozenset(
+    {
+        date(2016, 1, 1),
+        date(2016, 1, 18),
+        date(2016, 2, 15),
+        date(2016, 3, 25),
+        date(2016, 5, 30),
+        date(2016, 7, 4),
+        date(2016, 9, 5),
+        date(2016, 11, 24),
+        date(2016, 12, 26),
+    }
 )
+
+
+def build_expected_price_dates() -> tuple[date, ...]:
+    """Return the approved 2016 US-equities trading-date spine."""
+    dates: list[date] = []
+    current_date = EXPECTED_PRICE_START_DATE
+
+    while current_date <= EXPECTED_PRICE_END_DATE:
+        if (
+            current_date.weekday() < 5
+            and current_date not in US_EQUITIES_2016_HOLIDAYS
+        ):
+            dates.append(current_date)
+        current_date += timedelta(days=1)
+
+    if len(dates) != EXPECTED_PRICE_DATE_COUNT:
+        raise ValueError("Unexpected approved price-date count")
+    return tuple(dates)
+
+
+PRICE_DATES = build_expected_price_dates()
 
 DATASET_SPECS = {
     "DAILY_PRICES": {
@@ -51,7 +83,7 @@ DATASET_SPECS = {
         "silver_table": (
             "workspace.devin_market_risk_dev.silver_daily_prices"
         ),
-        "expected_source_count": 60,
+        "expected_source_count": 3780,
         "key_columns": ["instrument_id", "price_date", "source_id"],
         "output_columns": [
             "instrument_id",
@@ -1060,7 +1092,7 @@ def dataset_failures(
         F.col("source_id") == "PROJECT_GIT_FIXTURE"
     )
     if dataset_name == "DAILY_PRICES":
-        if fixture_snapshot.count() != 60:
+        if fixture_snapshot.count() != specification["expected_source_count"]:
             failures.append("PRICE_EXPECTED_COVERAGE")
         date_counts = {
             row["price_date"]: row["count"]

@@ -34,7 +34,9 @@ def test_market_silver_processor_is_valid_notebook_source() -> None:
 def test_market_silver_processor_supports_exact_datasets() -> None:
     specs = _literal_assignment("DATASET_SPECS")
     assert set(specs) == {"DAILY_PRICES", "CORPORATE_ACTIONS"}
-    assert specs["DAILY_PRICES"]["expected_source_count"] == 60
+    assert specs["DAILY_PRICES"]["expected_source_count"] == 3780
+    assert "EXPECTED_PRICE_DATE_COUNT = 252" in _source()
+    assert "def build_expected_price_dates()" in _source()
     assert specs["CORPORATE_ACTIONS"]["expected_source_count"] == 2
     assert specs["DAILY_PRICES"]["key_columns"] == [
         "instrument_id",
