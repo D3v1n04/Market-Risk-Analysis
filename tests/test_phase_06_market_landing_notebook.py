@@ -79,18 +79,38 @@ def test_market_landing_validation_pins_complete_evidence() -> None:
 
 
 def test_market_landing_validation_pins_generation_lineage() -> None:
-    assert _literal_assignment("GENERATION_SOURCE_OBJECT_PATH") == (
-        "data/fixtures/phase_07_risk_history.yml"
+    expected = _literal_assignment(
+        "EXPECTED_GENERATION_BY_DATASET"
     )
-    assert _literal_assignment("GENERATION_SOURCE_SHA256") == (
-        "9fb768b79dcdd74dd9b76b0408fae4c3d88a40635e440746064214043e6b2a1e"
-    )
-    assert _literal_assignment("GENERATOR_MODULE") == (
-        "market_risk_analysis.ingestion.phase_06_market_inputs"
-    )
-    assert _literal_assignment("GENERATOR_CODE_VERSION") == (
-        "5f31a75fc04afd63fd28224d663dc5cc7de2cac6"
-    )
+
+    assert expected["DAILY_PRICES"] == {
+        "generator_code_version": (
+            "5f31a75fc04afd63fd28224d663dc5cc7de2cac6"
+        ),
+        "generator_module": (
+            "market_risk_analysis.ingestion.phase_06_market_inputs"
+        ),
+        "source_object_path": (
+            "data/fixtures/phase_07_risk_history.yml"
+        ),
+        "source_sha256": (
+            "9fb768b79dcdd74dd9b76b0408fae4c3d88a40635e440746064214043e6b2a1e"
+        ),
+    }
+    assert expected["CORPORATE_ACTIONS"] == {
+        "generator_code_version": (
+            "ebb82db39e16466363f82adeca3529d816345ff9"
+        ),
+        "generator_module": (
+            "market_risk_analysis.ingestion.phase_06_market_inputs"
+        ),
+        "source_object_path": (
+            "data/fixtures/phase_06_analytics_scenario.yml"
+        ),
+        "source_sha256": (
+            "2fb0fe28a3d283e66d933ca6187a6869a33392f0526eab37724b549c9209cd00"
+        ),
+    }
 
     source = _read_notebook()
     assert '"generation lineage"' in source

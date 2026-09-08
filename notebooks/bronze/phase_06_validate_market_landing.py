@@ -18,12 +18,36 @@ LANDING_ROOT = Path(
     "/Volumes/workspace/devin_market_risk_dev/bronze_landing"
 )
 SOURCE_ID = "PROJECT_GIT_FIXTURE"
-GENERATION_SOURCE_OBJECT_PATH = "data/fixtures/phase_07_risk_history.yml"
-GENERATION_SOURCE_SHA256 = "9fb768b79dcdd74dd9b76b0408fae4c3d88a40635e440746064214043e6b2a1e"  # noqa: E501
-GENERATOR_MODULE = (
-    "market_risk_analysis.ingestion.phase_06_market_inputs"
-)
-GENERATOR_CODE_VERSION = "5f31a75fc04afd63fd28224d663dc5cc7de2cac6"
+EXPECTED_GENERATION_BY_DATASET = {
+    "DAILY_PRICES": {
+        "generator_code_version": (
+            "5f31a75fc04afd63fd28224d663dc5cc7de2cac6"
+        ),
+        "generator_module": (
+            "market_risk_analysis.ingestion.phase_06_market_inputs"
+        ),
+        "source_object_path": (
+            "data/fixtures/phase_07_risk_history.yml"
+        ),
+        "source_sha256": (
+            "9fb768b79dcdd74dd9b76b0408fae4c3d88a40635e440746064214043e6b2a1e"
+        ),
+    },
+    "CORPORATE_ACTIONS": {
+        "generator_code_version": (
+            "ebb82db39e16466363f82adeca3529d816345ff9"
+        ),
+        "generator_module": (
+            "market_risk_analysis.ingestion.phase_06_market_inputs"
+        ),
+        "source_object_path": (
+            "data/fixtures/phase_06_analytics_scenario.yml"
+        ),
+        "source_sha256": (
+            "2fb0fe28a3d283e66d933ca6187a6869a33392f0526eab37724b549c9209cd00"
+        ),
+    },
+}
 EXPECTED_PRICE_START_DATE = date(2016, 1, 4)
 EXPECTED_PRICE_END_DATE = date(2016, 12, 30)
 EXPECTED_PRICE_DATE_COUNT = 252
@@ -302,12 +326,9 @@ def load_and_validate_landing(
     require_equal(
         "generation lineage",
         manifest.get("generation"),
-        {
-            "generator_code_version": GENERATOR_CODE_VERSION,
-            "generator_module": GENERATOR_MODULE,
-            "source_object_path": GENERATION_SOURCE_OBJECT_PATH,
-            "source_sha256": GENERATION_SOURCE_SHA256,
-        },
+        EXPECTED_GENERATION_BY_DATASET[
+            specification["dataset_name"]
+        ],
     )
 
     print(f"{specification['dataset_name']} landing_validation=PASS")

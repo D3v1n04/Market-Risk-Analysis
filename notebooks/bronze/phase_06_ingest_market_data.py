@@ -34,7 +34,7 @@ APPROVED_DATASETS = {
         "bronze_table": (
             "workspace.devin_market_risk_dev.bronze_daily_prices"
         ),
-        "expected_record_count": 60,
+        "expected_record_count": 3780,
     },
     "CORPORATE_ACTIONS": {
         "bronze_table": (
