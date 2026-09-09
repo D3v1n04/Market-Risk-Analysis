@@ -6,7 +6,7 @@ risk analytics.
 
 ## Current milestone
 
-Phases 01 through 06 are complete.
+Phases 01 through 07 are complete.
 
 Phase 06 enabled governed deterministic instruments, target allocations, daily
 prices, corporate actions, a trading calendar, daily positions, and daily cash
@@ -18,9 +18,13 @@ independent reconciliation. Dividend signs, stock-split invariance, and unchange
 reruns reconcile; identical reruns retain immutable audit attempts without
 republishing unchanged canonical rows. The learner passed the explain-back.
 
-The validated implementation checkpoint is `632adc0`. The local quality gate passed
-Ruff, 198 pytest tests, and 11/11 environment checks. Live market-data retrieval
-remains outside the completed scope.
+Phase 07 adds one-day historical VaR and deterministic hypothetical stress measures
+over the approved 2016 fixture: 252 trading sessions, 251 returns, and 15
+instruments. CORE_15_LONG and LONG_SHORT_130_30 completed successful published live
+runs; independent contribution and stress reconciliation passed with exact Decimal
+precision alignment. The validated Phase 07 checkpoint is `87e1f23`. The latest
+local gate passed Ruff, 230 pytest tests, and `market-risk-check` 11/11. Live
+market-data retrieval remains outside the completed scope.
 
 ## Quick start
 
@@ -95,6 +99,8 @@ left the canonical SHA-256 fingerprint unchanged.
   implementation, validation, recovery, idempotency, and Phase 06 readiness.
 - [Phase 06 handoff](docs/handoffs/phase-06-handoff.md) records the completed Gold
   analytics, reconciliation, explain-back, and Phase 07 readiness.
+- [Phase 07 handoff](docs/handoffs/phase-07-handoff.md) records the completed risk
+  measures, stress validation, live runs, and reconciliation evidence.
 - [Phase 06 guide](docs/phase-06-gold-analytics-foundation.md) defines the governed
   dependencies, metric conventions, and completion evidence.
 - [Phase handoff template](docs/phase-handoff-template.md) defines the handoff
@@ -102,9 +108,10 @@ left the canonical SHA-256 fingerprint unchanged.
 
 ## Current phase boundary
 
-The next phase is Phase 07 — Risk Measures and Validation; it has not started.
+The next phase is Phase 08 — SQL Serving and DBeaver QA.
 Gold may consume governed Silver and previously published Gold when dependencies
 and lineage are explicit. Gold never reads Bronze directly.
 
-Multi-currency FX, VaR, production stress calculations, Power BI, scheduling, live
-retrieval, and StockTracker changes remain outside Phase 06.
+The completed Phase 07 risk measures use deterministic synthetic 2016 data only.
+Forecasts, Monte Carlo or parametric VaR, expected shortfall, formal backtesting,
+and live 2016–2026 history remain outside the completed scope.

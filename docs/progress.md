@@ -2,10 +2,10 @@
 
 ## Current position
 
-- **Current phase:** Phase 06 — Gold Analytics Foundation
+- **Current phase:** Phase 07 — Risk Measures and Validation
 - **Status:** Complete
-- **Next phase:** Phase 07 — Risk Measures and Validation (not started)
-- **Last updated:** 2026-09-08
+- **Next phase:** Phase 08 — SQL Serving and DBeaver QA
+- **Last updated:** 2026-09-09
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
 Databricks baselines were verified: two Bronze tables, four Silver tables, two
@@ -16,7 +16,17 @@ price, corporate-action, position, and cash dependencies. Phase 6B published and
 reconciled 120 instrument market-value rows and 8 portfolio-daily rows at checkpoint
 `632adc0`. Runtime validation, independent reconciliation, and the learner
 explain-back passed. The [Phase 06 handoff](handoffs/phase-06-handoff.md) records
-the completed evidence and Phase 07 readiness.
+the completed evidence. The [Phase 07 handoff](handoffs/phase-07-handoff.md)
+records the completed risk measures, live runs, and independent validation.
+
+Phase 07 completed the approved deterministic risk foundation: 252 2016 trading
+sessions, 251 adjacent adjusted-close returns, 15 instruments, USD-only one-day
+historical VaR at 95% and 99%, static January 7 exposure repriced on December 30,
+and three deterministic hypothetical scenarios with 15 shocks each. CORE_15_LONG
+and LONG_SHORT_130_30 both completed successful published live runs. Final live
+reconciliation passed, including exact stress Decimal precision alignment. CORE
+reruns attempts 1/2/3 preserved identical VaR and stress results and the same input
+manifest, proving append-only replay safety.
 
 ## Status definitions
 
@@ -39,7 +49,7 @@ the completed evidence and Phase 07 readiness.
 | 04 | Bronze Ingestion | Complete | `bf08e36` — ingestion verification |
 | 05 | Silver Quality and Canonical Data | Complete | `0d09a6a` — canonical merge target alias fix |
 | 06 | Gold Analytics Foundation | Complete | `632adc0` — audited Gold portfolio daily metrics v2 |
-| 07 | Risk Measures and Validation | Not started | — |
+| 07 | Risk Measures and Validation | Complete | `87e1f23` — risk validation precision alignment |
 | 08 | SQL Serving and DBeaver QA | Not started | — |
 | 09 | Power BI Semantic Model | Not started | — |
 | 10 | Market Risk Dashboard | Not started | — |
@@ -98,18 +108,14 @@ the completed evidence and Phase 07 readiness.
 | Qualify joined duplicate columns and alias Delta merge targets | Spark and Delta resolve column references only when their intended relation is explicit |
 | Hash ordered canonical snapshots for idempotency proof | Matching counts alone cannot prove that record content is unchanged |
 
-## Phase 07 readiness
+## Phase 07 completion
 
-- Phase 06 has no open completion blockers; Phase 07 has not started.
-- Governed Silver inputs and published Gold market values, NAV, P&L, returns, and
-  exposures are available with explicit grain, currency, dates, and lineage.
-- Verify the Phase 06 documentation commit, branch status, current canonical counts,
-  and audit evidence before changing code or data.
-- Agree historical VaR confidence levels, history requirements, loss signs, stress
-  assumptions, and independent validation examples before implementation. The four
-  deterministic valuation dates prove Phase 06 behavior, not sufficient risk history.
-- Keep multi-currency FX, Power BI, scheduling, live retrieval, and StockTracker
-  changes outside this handoff's completed scope.
+- Phase 07 contracts, Gold DDL, governed stress Bronze-to-Silver configuration, Gold
+  risk calculation, and read-only contribution-validation SQL are complete.
+- The expected Spark global-window warning is bounded to the 251-row VaR distribution.
+- Limitations remain explicit: deterministic synthetic 2016 data only; no forecasts,
+  Monte Carlo VaR, parametric VaR, expected shortfall, formal backtesting, or live
+  2016–2026 history.
 
 ## Evidence log
 
@@ -185,6 +191,13 @@ evidence; this date does not assert the execution date of each runtime attempt.
 | 2026-09-07 | 06 | Portfolio-daily audit | Pass | 10 succeeded attempts, 8 published partitions, 2 unchanged nonpublished reprocesses, 2 linked reprocesses |
 | 2026-09-07 | 06 | Independent economic checks | Pass | Cumulative P&L equals ending minus initial NAV exactly: USD 8,149.999997 long-only and USD 39,440 long-short; WMT dividend signs and NVDA split invariance reconcile |
 | 2026-09-07 | 06 | Explain-back | Pass | Learner explained grains, signs, gross/net, NAV/P&L/return baselines, dividends, cash effects, audit-only reruns, SHA-256 evidence, and split invariance |
+| 2026-09-09 | 07 | Deterministic history and exposure | Pass | 252 approved 2016 sessions, 251 adjacent returns, and 15 instruments; static January 7 quantities/cash repriced at December 30 |
+| 2026-09-09 | 07 | Risk methodology | Pass | USD-only one-day historical VaR at 95%/99% and three deterministic hypothetical 15-shock scenarios |
+| 2026-09-09 | 07 | Live published runs | Pass | CORE_15_LONG and LONG_SHORT_130_30 completed successful published risk runs |
+| 2026-09-09 | 07 | Independent reconciliation | Pass | Final live contribution, VaR, and stress reconciliation passed, including exact stress precision alignment |
+| 2026-09-09 | 07 | Append-only replay safety | Pass | CORE attempts 1/2/3 retained identical VaR and stress results and the same input manifest |
+| 2026-09-09 | 07 | Latest local quality gate | Pass | 230 pytest tests passed, Ruff passed, and `market-risk-check` reported 11/11 |
+| 2026-09-09 | 07 | Runtime warning review | Noted | Expected Spark global-window warning is bounded to the 251-row VaR distribution |
 
 ## Handoffs
 
@@ -201,6 +214,8 @@ Completed phase handoffs belong in `docs/handoffs/` and use
   runtime recovery, idempotency evidence, knowledge check, and Phase 06 readiness
 - `docs/handoffs/phase-06-handoff.md` — Phase 06 governed inputs, Gold metrics,
   runtime and independent reconciliation, explain-back, and Phase 07 readiness
+- `docs/handoffs/phase-07-handoff.md` — Phase 07 risk measures, live runs, replay
+  safety, and independent reconciliation evidence
 
 ## New-chat kickoff prompt
 
