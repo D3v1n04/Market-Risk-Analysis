@@ -76,6 +76,69 @@ USING DELTA
 COMMENT 'Immutable source-aligned Bronze target-allocation records with ingestion lineage';
 
 
+CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.bronze_stress_scenarios (
+    scenario_id STRING,
+    scenario_name STRING,
+    scenario_description STRING,
+    scenario_type STRING,
+    is_active STRING,
+    scenario_version STRING,
+    effective_from STRING,
+    effective_to STRING,
+    record_hash STRING,
+    batch_id STRING NOT NULL
+        COMMENT 'Ingestion batch that accepted this record.',
+    source_id STRING NOT NULL
+        COMMENT 'Actual origin of the supplied record.',
+    source_object_path STRING NOT NULL
+        COMMENT 'Repository-relative source fixture path.',
+    source_sha256 STRING NOT NULL
+        COMMENT 'SHA-256 digest of the complete source object.',
+    source_row_number BIGINT NOT NULL
+        COMMENT 'Deterministic one-based source record position.',
+    source_record_sha256 STRING NOT NULL
+        COMMENT 'SHA-256 digest of the exact raw record.',
+    raw_record STRING NOT NULL
+        COMMENT 'Exact supplied record retained for traceability.',
+    ingested_at_utc TIMESTAMP NOT NULL
+        COMMENT 'UTC timestamp when Databricks ingested the record.',
+    contract_version STRING NOT NULL
+        COMMENT 'Stress-scenario contract version applied during ingestion.'
+)
+USING DELTA
+COMMENT 'Immutable source-aligned Bronze stress-scenario records with ingestion lineage';
+
+
+CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.bronze_stress_scenario_shocks (
+    scenario_id STRING,
+    instrument_id STRING,
+    shock_ratio STRING,
+    shock_rationale STRING,
+    scenario_version STRING,
+    record_hash STRING,
+    batch_id STRING NOT NULL
+        COMMENT 'Ingestion batch that accepted this record.',
+    source_id STRING NOT NULL
+        COMMENT 'Actual origin of the supplied record.',
+    source_object_path STRING NOT NULL
+        COMMENT 'Repository-relative source fixture path.',
+    source_sha256 STRING NOT NULL
+        COMMENT 'SHA-256 digest of the complete source object.',
+    source_row_number BIGINT NOT NULL
+        COMMENT 'Deterministic one-based source record position.',
+    source_record_sha256 STRING NOT NULL
+        COMMENT 'SHA-256 digest of the exact raw record.',
+    raw_record STRING NOT NULL
+        COMMENT 'Exact supplied record retained for traceability.',
+    ingested_at_utc TIMESTAMP NOT NULL
+        COMMENT 'UTC timestamp when Databricks ingested the record.',
+    contract_version STRING NOT NULL
+        COMMENT 'Stress-shock contract version applied during ingestion.'
+)
+USING DELTA
+COMMENT 'Immutable source-aligned Bronze stress-scenario shocks with ingestion lineage';
+
+
 CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.bronze_daily_prices (
     instrument_id STRING,
     price_date STRING,

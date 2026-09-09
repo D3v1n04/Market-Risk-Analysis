@@ -156,6 +156,8 @@ def test_ingestion_batch_contract_is_bronze_only() -> None:
                "DAILY_PRICES",
         "INSTRUMENTS",
         "PORTFOLIOS",
+        "STRESS_SCENARIOS",
+        "STRESS_SCENARIO_SHOCKS",
         "TARGET_ALLOCATIONS",
        }
     assert "TRADING_CALENDAR" not in fields["dataset_name"]["allowed_values"]

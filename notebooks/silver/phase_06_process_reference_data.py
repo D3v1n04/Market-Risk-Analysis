@@ -34,6 +34,19 @@ SILVER_VIOLATION_TABLE = (
 SILVER_PORTFOLIO_TABLE = (
     "workspace.devin_market_risk_dev.silver_portfolios"
 )
+APPROVED_STRESS_SCENARIO_IDS = frozenset(
+    {
+        "BROAD_MARKET_DOWN_10",
+        "TECHNOLOGY_CORRECTION",
+        "GEOPOLITICAL_SUPPLY_SHOCK",
+    }
+)
+RULE_PREFIXES = {
+    "INSTRUMENTS": "INSTRUMENT",
+    "TARGET_ALLOCATIONS": "ALLOCATION",
+    "STRESS_SCENARIOS": "STRESS_SCENARIO",
+    "STRESS_SCENARIO_SHOCKS": "STRESS_SHOCK",
+}
 
 DATASET_SPECS = {
     "INSTRUMENTS": {
@@ -120,6 +133,70 @@ DATASET_SPECS = {
             "effective_to",
             "target_weight",
             "allocation_version",
+        ],
+    },
+    "STRESS_SCENARIOS": {
+        "contract_version": "1.0.0",
+        "bronze_table": (
+            "workspace.devin_market_risk_dev."
+            "bronze_stress_scenarios"
+        ),
+        "silver_table": (
+            "workspace.devin_market_risk_dev."
+            "silver_stress_scenarios"
+        ),
+        "expected_source_count": 3,
+        "key_columns": ["scenario_id"],
+        "version_column": "scenario_version",
+        "output_columns": [
+            "scenario_id",
+            "scenario_name",
+            "scenario_description",
+            "scenario_type",
+            "is_active",
+            "scenario_version",
+            "effective_from",
+            "effective_to",
+            "record_hash",
+        ],
+        "hash_fields": [
+            "scenario_id",
+            "scenario_name",
+            "scenario_description",
+            "scenario_type",
+            "is_active",
+            "scenario_version",
+            "effective_from",
+            "effective_to",
+        ],
+    },
+    "STRESS_SCENARIO_SHOCKS": {
+        "contract_version": "1.0.0",
+        "bronze_table": (
+            "workspace.devin_market_risk_dev."
+            "bronze_stress_scenario_shocks"
+        ),
+        "silver_table": (
+            "workspace.devin_market_risk_dev."
+            "silver_stress_scenario_shocks"
+        ),
+        "expected_source_count": 45,
+        "key_columns": ["scenario_id", "instrument_id"],
+        "version_column": "scenario_version",
+        "output_columns": [
+            "scenario_id",
+            "instrument_id",
+            "shock_ratio",
+            "shock_rationale",
+            "scenario_version",
+            "record_hash",
+        ],
+        "hash_fields": [
+            "scenario_id",
+            "instrument_id",
+            "shock_ratio",
+            "shock_rationale",
+            "scenario_version",
         ],
     },
 }
@@ -445,6 +522,112 @@ def typed_allocation_candidates(bronze_source: DataFrame) -> DataFrame:
             active_instruments,
             candidates.instrument_id
             == active_instruments.valid_instrument_id,
+            "left",
+        )
+    )
+
+
+def typed_stress_scenario_candidates(bronze_source: DataFrame) -> DataFrame:
+    """Convert source-aligned stress scenarios to Silver types."""
+    dataset_name = "STRESS_SCENARIOS"
+    raw_fields = DATASET_SPECS[dataset_name]["output_columns"]
+    candidates = bronze_source.select(
+        "batch_id",
+        "source_row_number",
+        "source_record_sha256",
+        *[F.col(name).alias(f"raw_{name}") for name in raw_fields],
+        F.col("scenario_id"),
+        F.col("scenario_name"),
+        F.col("scenario_description"),
+        F.col("scenario_type"),
+        F.expr("TRY_CAST(is_active AS BOOLEAN)").alias("is_active"),
+        F.col("scenario_version"),
+        F.expr("TRY_CAST(effective_from AS DATE)").alias(
+            "effective_from"
+        ),
+        F.expr(
+            "TRY_CAST(NULLIF(TRIM(effective_to), '') AS DATE)"
+        ).alias("effective_to"),
+        F.col("record_hash"),
+    )
+    return (
+        candidates.withColumn(
+            "source_record_id",
+            F.concat_ws(
+                ":",
+                F.col("batch_id"),
+                F.col("source_row_number").cast("string"),
+            ),
+        )
+        .withColumn(
+            "business_key",
+            business_key_expression(DATASET_SPECS[dataset_name]["key_columns"]),
+        )
+        .withColumn(
+            "computed_record_hash",
+            canonical_hash_expression(DATASET_SPECS[dataset_name]["hash_fields"]),
+        )
+    )
+
+
+def typed_stress_shock_candidates(bronze_source: DataFrame) -> DataFrame:
+    """Convert source-aligned stress shocks to Silver types and references."""
+    dataset_name = "STRESS_SCENARIO_SHOCKS"
+    raw_fields = DATASET_SPECS[dataset_name]["output_columns"]
+    candidates = bronze_source.select(
+        "batch_id",
+        "source_row_number",
+        "source_record_sha256",
+        *[F.col(name).alias(f"raw_{name}") for name in raw_fields],
+        F.col("scenario_id"),
+        F.col("instrument_id"),
+        F.expr("TRY_CAST(shock_ratio AS DECIMAL(12,10))").alias(
+            "shock_ratio"
+        ),
+        F.col("shock_rationale"),
+        F.col("scenario_version"),
+        F.col("record_hash"),
+    )
+    candidates = (
+        candidates.withColumn(
+            "source_record_id",
+            F.concat_ws(
+                ":",
+                F.col("batch_id"),
+                F.col("source_row_number").cast("string"),
+            ),
+        )
+        .withColumn(
+            "business_key",
+            business_key_expression(DATASET_SPECS[dataset_name]["key_columns"]),
+        )
+        .withColumn(
+            "computed_record_hash",
+            canonical_hash_expression(DATASET_SPECS[dataset_name]["hash_fields"]),
+        )
+    )
+    active_instruments = (
+        spark.table(DATASET_SPECS["INSTRUMENTS"]["silver_table"])
+        .where(F.col("is_active") == F.lit(True))
+        .select(F.col("instrument_id").alias("valid_instrument_id"))
+    )
+    active_scenarios = (
+        spark.table(DATASET_SPECS["STRESS_SCENARIOS"]["silver_table"])
+        .where(F.col("is_active") == F.lit(True))
+        .select(
+            F.col("scenario_id").alias("valid_scenario_id"),
+            F.col("scenario_version").alias("valid_scenario_version"),
+        )
+    )
+    return (
+        candidates.join(
+            active_instruments,
+            candidates.instrument_id == active_instruments.valid_instrument_id,
+            "left",
+        )
+        .join(
+            active_scenarios,
+            candidates.scenario_id == active_scenarios.valid_scenario_id,
             "left",
         )
     )
@@ -779,6 +962,287 @@ def allocation_record_violations(candidates: DataFrame) -> DataFrame:
     return explode_record_violations(candidates, violations)
 
 
+def stress_scenario_record_violations(candidates: DataFrame) -> DataFrame:
+    """Evaluate typed deterministic hypothetical scenario records."""
+    dataset_name = "STRESS_SCENARIOS"
+    required_fields = [
+        field
+        for field in DATASET_SPECS[dataset_name]["output_columns"]
+        if field != "effective_to"
+    ]
+    missing_required = None
+    for field in required_fields:
+        condition = F.col(f"raw_{field}").isNull() | (
+            F.trim(F.col(f"raw_{field}")) == ""
+        )
+        missing_required = (
+            condition
+            if missing_required is None
+            else missing_required | condition
+        )
+
+    invalid_type = (
+        (F.trim(F.col("raw_is_active")) != "")
+        & F.col("is_active").isNull()
+    ) | (
+        (F.trim(F.col("raw_effective_from")) != "")
+        & F.col("effective_from").isNull()
+    ) | (
+        (F.trim(F.col("raw_effective_to")) != "")
+        & F.col("effective_to").isNull()
+    )
+    scenario_text = F.lower(
+        F.concat_ws(" ", F.col("scenario_name"), F.col("scenario_description"))
+    )
+    language_not_hypothetical = (
+        ~scenario_text.contains("hypothetical")
+        | scenario_text.contains("forecast")
+    )
+    observed_types = F.to_json(
+        F.struct("raw_is_active", "raw_effective_from", "raw_effective_to")
+    )
+    violations = [
+        conditional_violation(
+            missing_required,
+            violation_struct(
+                rule_id="STRESS_SCENARIO_REQUIRED_FIELDS",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field=None,
+                observed_value=F.lit(None),
+                expected_condition="Every required scenario field is present.",
+                message="One or more required scenario fields are missing.",
+            ),
+        ),
+        conditional_violation(
+            invalid_type,
+            violation_struct(
+                rule_id="STRESS_SCENARIO_TYPES_CASTABLE",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field=None,
+                observed_value=observed_types,
+                expected_condition="Dates and is_active cast without loss.",
+                message="One or more scenario values cannot be safely typed.",
+            ),
+        ),
+        conditional_violation(
+            F.col("scenario_type") != F.lit("DETERMINISTIC_HYPOTHETICAL"),
+            violation_struct(
+                rule_id="STRESS_SCENARIO_TYPE_VALID",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="scenario_type",
+                observed_value=F.col("scenario_type"),
+                expected_condition="scenario_type is DETERMINISTIC_HYPOTHETICAL.",
+                message="Scenario type is not an approved deterministic hypothetical.",
+            ),
+        ),
+        conditional_violation(
+            ~F.col("scenario_version").rlike(r"^[0-9]+\.[0-9]+\.[0-9]+$"),
+            violation_struct(
+                rule_id="STRESS_SCENARIO_VERSION_VALID",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="scenario_version",
+                observed_value=F.col("scenario_version"),
+                expected_condition="scenario_version is numeric semantic versioning.",
+                message="Scenario version is invalid.",
+            ),
+        ),
+        conditional_violation(
+            language_not_hypothetical,
+            violation_struct(
+                rule_id="STRESS_SCENARIO_LANGUAGE_HYPOTHETICAL",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field=None,
+                observed_value=scenario_text,
+                expected_condition=(
+                    "Scenario language identifies a hypothetical assumption, "
+                    "never a forecast."
+                ),
+                message="Scenario language does not state a hypothetical assumption.",
+            ),
+        ),
+        conditional_violation(
+            F.col("effective_to").isNotNull()
+            & (F.col("effective_to") < F.col("effective_from")),
+            violation_struct(
+                rule_id="STRESS_SCENARIO_EFFECTIVE_RANGE",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="effective_to",
+                observed_value=F.col("raw_effective_to"),
+                expected_condition="effective_to is null or not before effective_from.",
+                message="Scenario effective date range is invalid.",
+            ),
+        ),
+        conditional_violation(
+            F.col("record_hash") != F.col("computed_record_hash"),
+            violation_struct(
+                rule_id="STRESS_SCENARIO_RECORD_HASH_VALID",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="record_hash",
+                observed_value=F.col("record_hash"),
+                expected_condition="record_hash matches canonical SHA-256.",
+                message="Scenario record hash does not match its values.",
+            ),
+        ),
+    ]
+    return explode_record_violations(candidates, violations)
+
+
+def stress_shock_record_violations(candidates: DataFrame) -> DataFrame:
+    """Evaluate typed deterministic hypothetical shock records."""
+    dataset_name = "STRESS_SCENARIO_SHOCKS"
+    required_fields = DATASET_SPECS[dataset_name]["output_columns"]
+    missing_required = None
+    for field in required_fields:
+        condition = F.col(f"raw_{field}").isNull() | (
+            F.trim(F.col(f"raw_{field}")) == ""
+        )
+        missing_required = (
+            condition
+            if missing_required is None
+            else missing_required | condition
+        )
+
+    invalid_type = (
+        (F.trim(F.col("raw_shock_ratio")) != "")
+        & F.col("shock_ratio").isNull()
+    )
+    invalid_foreign_key = (
+        F.col("valid_instrument_id").isNull()
+        | F.col("valid_scenario_id").isNull()
+    )
+    version_mismatch = (
+        F.col("valid_scenario_id").isNotNull()
+        & (F.col("scenario_version") != F.col("valid_scenario_version"))
+    )
+    violations = [
+        conditional_violation(
+            missing_required,
+            violation_struct(
+                rule_id="STRESS_SHOCK_REQUIRED_FIELDS",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field=None,
+                observed_value=F.lit(None),
+                expected_condition="Every required stress-shock field is present.",
+                message="One or more required stress-shock fields are missing.",
+            ),
+        ),
+        conditional_violation(
+            invalid_type,
+            violation_struct(
+                rule_id="STRESS_SHOCK_TYPES_CASTABLE",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="shock_ratio",
+                observed_value=F.col("raw_shock_ratio"),
+                expected_condition="shock_ratio casts to DECIMAL(12,10).",
+                message="Shock ratio cannot be safely typed.",
+            ),
+        ),
+        conditional_violation(
+            invalid_foreign_key,
+            violation_struct(
+                rule_id="STRESS_SHOCK_FOREIGN_KEYS_VALID",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field=None,
+                observed_value=F.to_json(F.struct("scenario_id", "instrument_id")),
+                expected_condition=(
+                    "Scenario and instrument reference active canonical "
+                    "Silver records."
+                ),
+                message=(
+                    "Shock contains an unavailable canonical scenario "
+                    "or instrument."
+                ),
+            ),
+        ),
+        conditional_violation(
+            version_mismatch,
+            violation_struct(
+                rule_id="STRESS_SHOCK_VERSION_MATCH",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="scenario_version",
+                observed_value=F.col("scenario_version"),
+                expected_condition=(
+                    "scenario_version matches the canonical scenario version."
+                ),
+                message="Shock scenario version does not match its canonical scenario.",
+            ),
+        ),
+        conditional_violation(
+            F.col("shock_ratio") < F.lit(Decimal("-1.0000000000")),
+            violation_struct(
+                rule_id="STRESS_SHOCK_MINIMUM_VALID",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="shock_ratio",
+                observed_value=F.col("raw_shock_ratio"),
+                expected_condition="shock_ratio is at least -1.0000000000.",
+                message="Shock ratio is below the minimum possible equity return.",
+            ),
+        ),
+        conditional_violation(
+            F.trim(F.col("shock_rationale")) == "",
+            violation_struct(
+                rule_id="STRESS_SHOCK_RATIONALE_REQUIRED",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="shock_rationale",
+                observed_value=F.col("shock_rationale"),
+                expected_condition="shock_rationale is nonempty.",
+                message="Shock rationale is required.",
+            ),
+        ),
+        conditional_violation(
+            (F.col("scenario_id") == F.lit("BROAD_MARKET_DOWN_10"))
+            & (F.col("shock_ratio") != F.lit(Decimal("-0.1000000000"))),
+            violation_struct(
+                rule_id="STRESS_BROAD_MARKET_BASELINE",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="shock_ratio",
+                observed_value=F.col("raw_shock_ratio"),
+                expected_condition="BROAD_MARKET_DOWN_10 shock_ratio is -0.1000000000.",
+                message="Broad-market baseline shock is not the approved value.",
+            ),
+        ),
+        conditional_violation(
+            F.col("shock_ratio") > F.lit(Decimal("1.0000000000")),
+            violation_struct(
+                rule_id="STRESS_SHOCK_EXTREME_GAIN_REVIEW",
+                severity="WARNING",
+                disposition="WARN_AND_ACCEPT",
+                affected_field="shock_ratio",
+                observed_value=F.col("raw_shock_ratio"),
+                expected_condition="Shock gains above 1.0 require explicit review.",
+                message="Extreme positive shock requires review of its rationale.",
+            ),
+        ),
+        conditional_violation(
+            F.col("record_hash") != F.col("computed_record_hash"),
+            violation_struct(
+                rule_id="STRESS_SHOCK_RECORD_HASH_VALID",
+                severity="ERROR",
+                disposition="REJECT",
+                affected_field="record_hash",
+                observed_value=F.col("record_hash"),
+                expected_condition="record_hash matches canonical SHA-256.",
+                message="Shock record hash does not match its values.",
+            ),
+        ),
+    ]
+    return explode_record_violations(candidates, violations)
+
+
 def explode_record_violations(
     candidates: DataFrame,
     violations: list[Column],
@@ -848,7 +1312,7 @@ def same_batch_violations(
     dataset_name: str,
 ) -> DataFrame:
     """Emit duplicate warnings and conflict errors."""
-    prefix = "INSTRUMENT" if dataset_name == "INSTRUMENTS" else "ALLOCATION"
+    prefix = RULE_PREFIXES[dataset_name]
     violations = [
         conditional_violation(
             (F.col("key_count") > 1)
@@ -994,7 +1458,7 @@ def invalid_correction_violations(
     dataset_name: str,
 ) -> DataFrame:
     """Emit rejection evidence for invalid later versions."""
-    prefix = "INSTRUMENT" if dataset_name == "INSTRUMENTS" else "ALLOCATION"
+    prefix = RULE_PREFIXES[dataset_name]
     version_column = DATASET_SPECS[dataset_name]["version_column"]
     return (
         comparisons.where(
@@ -1213,6 +1677,80 @@ def allocation_dataset_failures(snapshot: DataFrame) -> list[str]:
     return failures
 
 
+def stress_scenario_dataset_failures(snapshot: DataFrame) -> list[str]:
+    """Evaluate the approved active deterministic scenario configuration."""
+    failures: list[str] = []
+    active = snapshot.where(F.col("is_active") == F.lit(True))
+    active_rows = active.select("scenario_id", "scenario_version").collect()
+    active_ids = {row["scenario_id"] for row in active_rows}
+    active_versions = {row["scenario_version"] for row in active_rows}
+
+    if active_ids != APPROVED_STRESS_SCENARIO_IDS or active_versions != {"1.0.0"}:
+        failures.append("STRESS_SCENARIO_ACTIVE_SET")
+    if snapshot.select("scenario_id").distinct().count() != snapshot.count():
+        failures.append("STRESS_SCENARIO_ID_UNIQUE")
+    return failures
+
+
+def stress_shock_dataset_failures(snapshot: DataFrame) -> list[str]:
+    """Evaluate canonical shock coverage after scenario publication."""
+    failures: list[str] = []
+    active_scenarios = (
+        spark.table(DATASET_SPECS["STRESS_SCENARIOS"]["silver_table"])
+        .where(F.col("is_active") == F.lit(True))
+        .select("scenario_id", "scenario_version")
+    )
+    active_instruments = (
+        spark.table(DATASET_SPECS["INSTRUMENTS"]["silver_table"])
+        .where(F.col("is_active") == F.lit(True))
+        .select("instrument_id")
+    )
+    active_scenario_rows = active_scenarios.collect()
+    active_scenario_ids = {
+        row["scenario_id"] for row in active_scenario_rows
+    }
+    if active_scenario_ids != APPROVED_STRESS_SCENARIO_IDS:
+        failures.append("STRESS_SHOCK_CANONICAL_SCENARIOS_AVAILABLE")
+        return failures
+
+    key_columns = DATASET_SPECS["STRESS_SCENARIO_SHOCKS"]["key_columns"]
+    if snapshot.select(*key_columns).distinct().count() != snapshot.count():
+        failures.append("STRESS_SHOCK_BUSINESS_KEY_UNIQUE")
+
+    expected_pairs = active_scenarios.select("scenario_id").crossJoin(
+        active_instruments
+    )
+    expected_count = expected_pairs.count()
+    actual_pairs = snapshot.select(*key_columns).distinct()
+    missing_pair_count = expected_pairs.join(
+        actual_pairs,
+        key_columns,
+        "left_anti",
+    ).count()
+    extra_pair_count = actual_pairs.join(
+        expected_pairs,
+        key_columns,
+        "left_anti",
+    ).count()
+    if (
+        expected_count != 45
+        or snapshot.count() != expected_count
+        or missing_pair_count > 0
+        or extra_pair_count > 0
+    ):
+        failures.append("STRESS_SHOCK_ACTIVE_COVERAGE")
+
+    broad_market_invalid_count = (
+        snapshot.where(
+            (F.col("scenario_id") == F.lit("BROAD_MARKET_DOWN_10"))
+            & (F.col("shock_ratio") != F.lit(Decimal("-0.1000000000")))
+        ).count()
+    )
+    if broad_market_invalid_count > 0:
+        failures.append("STRESS_BROAD_MARKET_BASELINE")
+    return failures
+
+
 # COMMAND ----------
 
 spark = SparkSession.builder.getOrCreate()
@@ -1300,9 +1838,17 @@ print(f"input_record_set_sha256={input_record_set_sha256}")
 if dataset_name == "INSTRUMENTS":
     typed_candidates = typed_instrument_candidates(bronze_source)
     record_rule_violations = instrument_record_violations(typed_candidates)
-else:
+elif dataset_name == "TARGET_ALLOCATIONS":
     typed_candidates = typed_allocation_candidates(bronze_source)
     record_rule_violations = allocation_record_violations(typed_candidates)
+elif dataset_name == "STRESS_SCENARIOS":
+    typed_candidates = typed_stress_scenario_candidates(bronze_source)
+    record_rule_violations = stress_scenario_record_violations(
+        typed_candidates
+    )
+else:
+    typed_candidates = typed_stress_shock_candidates(bronze_source)
+    record_rule_violations = stress_shock_record_violations(typed_candidates)
 
 ranked_candidates = add_same_batch_evidence(typed_candidates)
 duplicate_rule_violations = same_batch_violations(
@@ -1413,8 +1959,12 @@ prospective_sha256 = snapshot_sha256(
 
 if dataset_name == "INSTRUMENTS":
     failed_rule_ids = instrument_dataset_failures(prospective_snapshot)
-else:
+elif dataset_name == "TARGET_ALLOCATIONS":
     failed_rule_ids = allocation_dataset_failures(prospective_snapshot)
+elif dataset_name == "STRESS_SCENARIOS":
+    failed_rule_ids = stress_scenario_dataset_failures(prospective_snapshot)
+else:
+    failed_rule_ids = stress_shock_dataset_failures(prospective_snapshot)
 
 publish_allowed = (
     rejected_count == 0

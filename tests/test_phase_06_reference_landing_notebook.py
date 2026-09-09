@@ -54,6 +54,8 @@ def test_phase_06_reference_validation_pins_landed_evidence() -> None:
 
     assert set(specifications) == {
         "INSTRUMENTS",
+        "STRESS_SCENARIOS",
+        "STRESS_SCENARIO_SHOCKS",
         "TARGET_ALLOCATIONS",
     }
 
@@ -85,6 +87,36 @@ def test_phase_06_reference_validation_pins_landed_evidence() -> None:
     assert allocations["expected_column_count"] == 7
     assert allocations["bronze_table"].endswith(
         ".bronze_target_allocations"
+    )
+
+    scenarios = specifications["STRESS_SCENARIOS"]
+    assert scenarios["source_sha256"] == (
+        "3aae999b9d0cc6c8dea56f64b059d219"
+        "3ac4d4b8943502c0bb58174bb811c8cb"
+    )
+    assert scenarios["manifest_sha256"] == (
+        "2ee337e0ba7233e87510aab18f426b6a"
+        "8a67af62fb6e6a58ab0672f9e9c4eb65"
+    )
+    assert scenarios["expected_record_count"] == 3
+    assert scenarios["expected_column_count"] == 9
+    assert scenarios["bronze_table"].endswith(
+        ".bronze_stress_scenarios"
+    )
+
+    shocks = specifications["STRESS_SCENARIO_SHOCKS"]
+    assert shocks["source_sha256"] == (
+        "ecbc15c312f7b533b12e4433ee6fab2f"
+        "c2c9a74e5c5554e6fbf006791c7f28c3"
+    )
+    assert shocks["manifest_sha256"] == (
+        "133bf6ade22987f5c33e73fb6b35a052"
+        "0e6449d1b629a3e5f821073765c26dec"
+    )
+    assert shocks["expected_record_count"] == 45
+    assert shocks["expected_column_count"] == 6
+    assert shocks["bronze_table"].endswith(
+        ".bronze_stress_scenario_shocks"
     )
 
 

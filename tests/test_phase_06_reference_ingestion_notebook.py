@@ -72,6 +72,8 @@ def test_reference_ingestion_pins_approved_sources() -> None:
 
     assert set(specifications) == {
         "INSTRUMENTS",
+        "STRESS_SCENARIOS",
+        "STRESS_SCENARIO_SHOCKS",
         "TARGET_ALLOCATIONS",
     }
     assert {
@@ -83,11 +85,42 @@ def test_reference_ingestion_pins_approved_sources() -> None:
             "workspace.devin_market_risk_dev."
             "bronze_target_allocations"
         ),
+        (
+            "workspace.devin_market_risk_dev."
+            "bronze_stress_scenarios"
+        ),
+        (
+            "workspace.devin_market_risk_dev."
+            "bronze_stress_scenario_shocks"
+        ),
     }
     assert specifications["INSTRUMENTS"]["expected_record_count"] == 15
     assert (
         specifications["TARGET_ALLOCATIONS"]["expected_record_count"]
         == 30
+    )
+    assert specifications["STRESS_SCENARIOS"]["source_sha256"] == (
+        "3aae999b9d0cc6c8dea56f64b059d219"
+        "3ac4d4b8943502c0bb58174bb811c8cb"
+    )
+    assert specifications["STRESS_SCENARIOS"]["manifest_sha256"] == (
+        "2ee337e0ba7233e87510aab18f426b6a"
+        "8a67af62fb6e6a58ab0672f9e9c4eb65"
+    )
+    assert specifications["STRESS_SCENARIOS"]["expected_record_count"] == 3
+    assert (
+        specifications["STRESS_SCENARIO_SHOCKS"]["source_sha256"]
+        == "ecbc15c312f7b533b12e4433ee6fab2f"
+        "c2c9a74e5c5554e6fbf006791c7f28c3"
+    )
+    assert (
+        specifications["STRESS_SCENARIO_SHOCKS"]["manifest_sha256"]
+        == "133bf6ade22987f5c33e73fb6b35a052"
+        "0e6449d1b629a3e5f821073765c26dec"
+    )
+    assert (
+        specifications["STRESS_SCENARIO_SHOCKS"]["expected_record_count"]
+        == 45
     )
 
 

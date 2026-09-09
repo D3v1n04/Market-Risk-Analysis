@@ -22,6 +22,13 @@ TABLES = {
     "target_allocations": (
         "workspace.devin_market_risk_dev.silver_target_allocations"
     ),
+    "stress_scenarios": (
+        "workspace.devin_market_risk_dev.silver_stress_scenarios"
+    ),
+    "stress_scenario_shocks": (
+        "workspace.devin_market_risk_dev."
+        "silver_stress_scenario_shocks"
+    ),
     "daily_prices": (
         "workspace.devin_market_risk_dev.silver_daily_prices"
     ),
@@ -80,6 +87,8 @@ def test_phase_06_input_silver_columns_match_contracts() -> None:
     expected_counts = {
         "instruments": 18,
         "target_allocations": 7,
+        "stress_scenarios": 9,
+        "stress_scenario_shocks": 6,
         "daily_prices": 17,
         "corporate_actions": 15,
         "trading_calendar": 12,
@@ -102,7 +111,7 @@ def test_phase_06_input_silver_columns_match_contracts() -> None:
         assert len(columns) == expected_counts[dataset]
         assert actual_types == expected_types
 
-    assert sum(expected_counts.values()) == 85
+    assert sum(expected_counts.values()) == 100
 
 
 def test_phase_06_input_silver_nullability_matches_contracts() -> None:
@@ -111,6 +120,8 @@ def test_phase_06_input_silver_nullability_matches_contracts() -> None:
     expected_required_counts = {
         "instruments": 17,
         "target_allocations": 6,
+        "stress_scenarios": 8,
+        "stress_scenario_shocks": 6,
         "daily_prices": 15,
         "corporate_actions": 10,
         "trading_calendar": 9,
@@ -141,8 +152,8 @@ def test_phase_06_input_silver_ddl_is_safe_and_unpartitioned() -> None:
     ddl = DDL_PATH.read_text(encoding="utf-8")
     normalized = " ".join(ddl.upper().split())
 
-    assert ddl.count("CREATE TABLE IF NOT EXISTS") == 6
-    assert ddl.count("USING DELTA") == 6
+    assert ddl.count("CREATE TABLE IF NOT EXISTS") == 8
+    assert ddl.count("USING DELTA") == 8
     assert "PARTITIONED BY" not in normalized
 
     prohibited_statements = {
@@ -184,6 +195,8 @@ def test_phase_06_input_silver_keeps_audit_data_separate() -> None:
     for dataset in [
         "instruments",
         "target_allocations",
+        "stress_scenarios",
+        "stress_scenario_shocks",
         "daily_prices",
         "corporate_actions",
         "trading_calendar",

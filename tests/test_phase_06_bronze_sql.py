@@ -22,6 +22,13 @@ TABLES = {
     "target_allocations": (
         "workspace.devin_market_risk_dev.bronze_target_allocations"
     ),
+    "stress_scenarios": (
+        "workspace.devin_market_risk_dev.bronze_stress_scenarios"
+    ),
+    "stress_scenario_shocks": (
+        "workspace.devin_market_risk_dev."
+        "bronze_stress_scenario_shocks"
+    ),
     "daily_prices": (
         "workspace.devin_market_risk_dev.bronze_daily_prices"
     ),
@@ -84,12 +91,12 @@ def _extract_required_columns(ddl: str, table_name: str) -> set[str]:
     )
 
 
-def test_phase_06_bronze_ddl_creates_four_safe_delta_tables() -> None:
+def test_phase_06_bronze_ddl_creates_six_safe_delta_tables() -> None:
     ddl = DDL_PATH.read_text(encoding="utf-8")
     normalized = " ".join(ddl.upper().split())
 
-    assert ddl.count("CREATE TABLE IF NOT EXISTS") == 4
-    assert ddl.count("USING DELTA") == 4
+    assert ddl.count("CREATE TABLE IF NOT EXISTS") == 6
+    assert ddl.count("USING DELTA") == 6
     assert "PARTITIONED BY" not in normalized
 
     for table_name in TABLES.values():
@@ -151,6 +158,13 @@ def test_phase_06_bronze_defers_business_type_conversion() -> None:
         TABLES["target_allocations"]: {
             "effective_from",
             "target_weight",
+        },
+        TABLES["stress_scenarios"]: {
+            "is_active",
+            "effective_from",
+        },
+        TABLES["stress_scenario_shocks"]: {
+            "shock_ratio",
         },
         TABLES["daily_prices"]: {
             "price_date",

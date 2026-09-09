@@ -71,6 +71,60 @@ REFERENCE_SOURCES = (
             "target_weight",
         ],
     },
+    {
+        "dataset_name": "STRESS_SCENARIOS",
+        "dataset_slug": "stress_scenarios",
+        "source_filename": "stress_scenarios.csv",
+        "source_object_path": "data/fixtures/stress_scenarios.csv",
+        "source_sha256": (
+            "3aae999b9d0cc6c8dea56f64b059d219"
+            "3ac4d4b8943502c0bb58174bb811c8cb"
+        ),
+        "manifest_sha256": (
+            "2ee337e0ba7233e87510aab18f426b6a"
+            "8a67af62fb6e6a58ab0672f9e9c4eb65"
+        ),
+        "source_contract_version": "1.0.0",
+        "expected_record_count": 3,
+        "expected_column_count": 9,
+        "bronze_table": (
+            "workspace.devin_market_risk_dev."
+            "bronze_stress_scenarios"
+        ),
+        "preview_columns": [
+            "scenario_id",
+            "scenario_type",
+            "scenario_version",
+        ],
+    },
+    {
+        "dataset_name": "STRESS_SCENARIO_SHOCKS",
+        "dataset_slug": "stress_scenario_shocks",
+        "source_filename": "stress_scenario_shocks.csv",
+        "source_object_path": (
+            "data/fixtures/stress_scenario_shocks.csv"
+        ),
+        "source_sha256": (
+            "ecbc15c312f7b533b12e4433ee6fab2f"
+            "c2c9a74e5c5554e6fbf006791c7f28c3"
+        ),
+        "manifest_sha256": (
+            "133bf6ade22987f5c33e73fb6b35a052"
+            "0e6449d1b629a3e5f821073765c26dec"
+        ),
+        "source_contract_version": "1.0.0",
+        "expected_record_count": 45,
+        "expected_column_count": 6,
+        "bronze_table": (
+            "workspace.devin_market_risk_dev."
+            "bronze_stress_scenario_shocks"
+        ),
+        "preview_columns": [
+            "scenario_id",
+            "instrument_id",
+            "shock_ratio",
+        ],
+    },
 )
 
 

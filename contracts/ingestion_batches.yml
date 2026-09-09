@@ -20,7 +20,7 @@ fields:
   - name: dataset_name
     type: STRING
     nullable: false
-    allowed_values: [CORPORATE_ACTIONS, DAILY_PRICES, INSTRUMENTS, PORTFOLIOS, TARGET_ALLOCATIONS]
+    allowed_values: [CORPORATE_ACTIONS, DAILY_PRICES, INSTRUMENTS, PORTFOLIOS, STRESS_SCENARIOS, STRESS_SCENARIO_SHOCKS, TARGET_ALLOCATIONS]
   - name: source_id
     type: STRING
     nullable: false

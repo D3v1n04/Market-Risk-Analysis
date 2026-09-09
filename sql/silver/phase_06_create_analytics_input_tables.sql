@@ -40,6 +40,33 @@ USING DELTA
 COMMENT 'Typed and validated canonical target allocations';
 
 
+CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.silver_stress_scenarios (
+    scenario_id STRING NOT NULL,
+    scenario_name STRING NOT NULL,
+    scenario_description STRING NOT NULL,
+    scenario_type STRING NOT NULL,
+    is_active BOOLEAN NOT NULL,
+    scenario_version STRING NOT NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE,
+    record_hash STRING NOT NULL
+)
+USING DELTA
+COMMENT 'Typed and validated canonical deterministic hypothetical stress scenarios';
+
+
+CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.silver_stress_scenario_shocks (
+    scenario_id STRING NOT NULL,
+    instrument_id STRING NOT NULL,
+    shock_ratio DECIMAL(12,10) NOT NULL,
+    shock_rationale STRING NOT NULL,
+    scenario_version STRING NOT NULL,
+    record_hash STRING NOT NULL
+)
+USING DELTA
+COMMENT 'Typed and validated canonical deterministic hypothetical instrument shocks';
+
+
 CREATE TABLE IF NOT EXISTS workspace.devin_market_risk_dev.silver_daily_prices (
     instrument_id STRING NOT NULL,
     price_date DATE NOT NULL,
