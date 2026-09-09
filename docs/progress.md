@@ -3,6 +3,7 @@
 ## Current position
 
 - **Current phase:** Phase 08 — SQL Serving and Databricks QA
+- **Commit:** `2ca5212` — `feat: add governed Phase 08 serving views and QA`
 - **Status:** Complete
 - **Next phase:** Phase 09 — Power BI Semantic Model
 - **Last updated:** 2026-09-09
@@ -60,7 +61,7 @@ completeness, and rerun-control checks.
 | 05 | Silver Quality and Canonical Data | Complete | `0d09a6a` — canonical merge target alias fix |
 | 06 | Gold Analytics Foundation | Complete | `632adc0` — audited Gold portfolio daily metrics v2 |
 | 07 | Risk Measures and Validation | Complete | `87e1f23` — risk validation precision alignment |
-| 08 | SQL Serving and Databricks QA | Complete | Pending commit |
+| 08 | SQL Serving and Databricks QA | Complete | `2ca5212` — serving views and QA |
 | 09 | Power BI Semantic Model | Not started | — |
 | 10 | Market Risk Dashboard | Not started | — |
 | 11 | Automation, Deployment, and CI | Not started | — |

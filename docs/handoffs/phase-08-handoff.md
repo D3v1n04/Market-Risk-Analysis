@@ -3,7 +3,7 @@
 ## Status
 
 - **Phase:** 08 — SQL Serving and Databricks QA
-- **Status:** Complete pending Git checkpoint
+- **Status:** Complete
 - **Date:** 2026-09-09
 - **Next phase:** 09 — Power BI Semantic Model
 
@@ -85,9 +85,8 @@ trusted, reliable, clean, valid data without duplicates or mismatches.
 ## Git checkpoint
 
 - **Branch:** `phase-08-sql-serving-dbeaver-qa`
-- **Commit:** Not committed
-- **Working tree:** Intentional Phase 08 serving SQL, QA SQL, tests, roadmap,
-  progress, phase record, and handoff changes are pending review.
+- **Commit:** `2ca5212` — `feat: add governed Phase 08 serving views and QA`
+- **Working tree:** Clean after the Phase 08 documentation checkpoint.
 - **Ignored/generated artifacts checked:** No credentials, tokens, or generated
   platform state are intended for commit.
 
