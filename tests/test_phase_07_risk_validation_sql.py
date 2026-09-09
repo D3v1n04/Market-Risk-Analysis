@@ -55,6 +55,19 @@ def test_risk_validation_sql_is_select_or_cte_only() -> None:
         assert re.search(rf"\b{forbidden_keyword}\b", normalized) is None
 
 
+def test_risk_validation_sql_uses_no_tolerance_or_approximate_comparison() -> None:
+    normalized = _normalized_sql(_read_sql()).upper()
+
+    for forbidden_function_or_term in [
+        "ABS(",
+        "APPROX",
+        "ROUND(",
+        "BROUND(",
+        "TOLERANCE",
+    ]:
+        assert forbidden_function_or_term not in normalized
+
+
 def test_risk_validation_sql_reads_the_governed_gold_and_silver_sources() -> None:
     sql = _read_sql()
 
@@ -109,7 +122,8 @@ def test_var_contributions_use_signed_formulas_and_deterministic_ranking() -> No
     normalized = _normalized_sql(_read_sql())
 
     assert re.search(
-        r"CAST\( position\.signed_quantity \* price\.close_price AS "
+        r"CAST\( CAST\(position\.signed_quantity AS DECIMAL\(38,16\)\) "
+        r"\* CAST\(price\.close_price AS DECIMAL\(20,8\)\) AS "
         r"DECIMAL\(38,16\) \) AS signed_market_value",
         normalized,
     )
@@ -146,6 +160,41 @@ def test_reconciliations_require_component_and_shock_cardinality() -> None:
         "COUNT(*) = 15 AND COUNT(DISTINCT instrument_id) = 15 "
         "AS component_cardinality_valid" in normalized
     )
+
+
+def test_stress_reconciliation_matches_calculator_decimal_cast_boundaries() -> None:
+    normalized = _normalized_sql(_read_sql())
+
+    static_market_value = (
+        r"CAST\( CAST\(position\.signed_quantity AS DECIMAL\(38,16\)\) "
+        r"\* CAST\(price\.close_price AS DECIMAL\(20,8\)\) AS "
+        r"DECIMAL\(38,16\) \) AS signed_market_value"
+    )
+    shock_component = (
+        r"CAST\(exposure\.signed_market_value AS DECIMAL\(38,16\)\) \* "
+        r"CAST\(shock\.shock_ratio AS DECIMAL\(38,16\)\) "
+        r"AS component_stress_pnl"
+    )
+    static_nav = (
+        r"CAST\( CAST\(SUM\(exposure\.signed_market_value\) AS "
+        r"DECIMAL\(38,16\)\) \+ CAST\(cash\.closing_cash_balance AS "
+        r"DECIMAL\(38,16\)\) AS DECIMAL\(38,16\) \) AS static_nav"
+    )
+    stressed_nav = (
+        r"CAST\( CAST\(static_nav\.static_nav AS DECIMAL\(38,16\)\) \+ "
+        r"CAST\(reconciliation\.recalculated_stress_pnl AS DECIMAL\(38,16\)\) "
+        r"AS DECIMAL\(38,16\) \)"
+    )
+
+    assert len(re.findall(static_market_value, normalized)) == 2
+    assert re.search(shock_component, normalized)
+    assert re.search(
+        r"CAST\(SUM\(component\.component_stress_pnl\) AS "
+        r"DECIMAL\(38,16\)\) AS recalculated_stress_pnl",
+        normalized,
+    )
+    assert re.search(static_nav, normalized)
+    assert len(re.findall(stressed_nav, normalized)) == 2
     assert (
         "COUNT(*) = 15 AND COUNT(DISTINCT component.instrument_id) = 15 "
         "AS stress_cardinality_valid" in normalized

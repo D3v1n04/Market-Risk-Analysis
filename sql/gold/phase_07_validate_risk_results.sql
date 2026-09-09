@@ -134,7 +134,9 @@ static_exposure AS (
         CAST(position.signed_quantity AS DECIMAL(38,16)) AS signed_quantity,
         CAST(price.close_price AS DECIMAL(20,8)) AS december_30_close_price,
         CAST(
-            position.signed_quantity * price.close_price AS DECIMAL(38,16)
+            CAST(position.signed_quantity AS DECIMAL(38,16))
+                * CAST(price.close_price AS DECIMAL(20,8))
+            AS DECIMAL(38,16)
         ) AS signed_market_value
     FROM published_successful_runs AS run
     INNER JOIN workspace.devin_market_risk_dev.silver_positions AS position
@@ -286,7 +288,9 @@ static_exposure AS (
         run.portfolio_id,
         position.instrument_id,
         CAST(
-            position.signed_quantity * price.close_price AS DECIMAL(38,16)
+            CAST(position.signed_quantity AS DECIMAL(38,16))
+                * CAST(price.close_price AS DECIMAL(20,8))
+            AS DECIMAL(38,16)
         ) AS signed_market_value
     FROM published_successful_runs AS run
     INNER JOIN workspace.devin_market_risk_dev.silver_positions AS position
@@ -300,7 +304,8 @@ static_nav AS (
     SELECT
         exposure.risk_run_id,
         CAST(
-            SUM(exposure.signed_market_value) + cash.closing_cash_balance
+            CAST(SUM(exposure.signed_market_value) AS DECIMAL(38,16))
+                + CAST(cash.closing_cash_balance AS DECIMAL(38,16))
             AS DECIMAL(38,16)
         ) AS static_nav
     FROM static_exposure AS exposure
@@ -319,9 +324,9 @@ stress_components AS (
         exposure.instrument_id,
         exposure.signed_market_value,
         shock.shock_ratio,
-        CAST(
-            exposure.signed_market_value * shock.shock_ratio AS DECIMAL(38,16)
-        ) AS component_stress_pnl,
+        CAST(exposure.signed_market_value AS DECIMAL(38,16))
+            * CAST(shock.shock_ratio AS DECIMAL(38,16))
+            AS component_stress_pnl,
         scenario.scenario_type,
         scenario.is_active,
         scenario.record_hash = result.input_stress_scenario_record_sha256
@@ -387,7 +392,8 @@ SELECT
     result.stress_pnl = reconciliation.recalculated_stress_pnl
         AS stress_pnl_reconciles,
     result.stressed_nav = CAST(
-        static_nav.static_nav + reconciliation.recalculated_stress_pnl
+        CAST(static_nav.static_nav AS DECIMAL(38,16))
+            + CAST(reconciliation.recalculated_stress_pnl AS DECIMAL(38,16))
         AS DECIMAL(38,16)
     ) AS stressed_nav_reconciles,
     COALESCE(reconciliation.stress_cardinality_valid, false)
@@ -396,7 +402,8 @@ SELECT
         AND reconciliation.distinct_shock_instrument_count = 15
         AND result.stress_pnl = reconciliation.recalculated_stress_pnl
         AND result.stressed_nav = CAST(
-            static_nav.static_nav + reconciliation.recalculated_stress_pnl
+            CAST(static_nav.static_nav AS DECIMAL(38,16))
+                + CAST(reconciliation.recalculated_stress_pnl AS DECIMAL(38,16))
             AS DECIMAL(38,16)
         )
         AND reconciliation.has_deterministic_hypothetical_scenario
