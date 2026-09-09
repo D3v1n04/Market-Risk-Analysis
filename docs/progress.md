@@ -2,9 +2,9 @@
 
 ## Current position
 
-- **Current phase:** Phase 07 — Risk Measures and Validation
+- **Current phase:** Phase 08 — SQL Serving and Databricks QA
 - **Status:** Complete
-- **Next phase:** Phase 08 — SQL Serving and DBeaver QA
+- **Next phase:** Phase 09 — Power BI Semantic Model
 - **Last updated:** 2026-09-09
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
@@ -28,6 +28,16 @@ reconciliation passed, including exact stress Decimal precision alignment. CORE
 reruns attempts 1/2/3 preserved identical VaR and stress results and the same input
 manifest, proving append-only replay safety.
 
+Phase 08 published five consumer-serving views and validated them directly in
+Databricks SQL. Daily analytics served 8 unique portfolio/date rows and position
+exposure served 120 unique portfolio/instrument/date rows, both USD-only and without
+duplicates. The append-only Phase 07 risk outputs are controlled through one
+deterministically selected complete published run per portfolio and as-of date:
+CORE_15_LONG attempt 3 and LONG_SHORT_130_30 attempt 1. The selected runs each
+serve exactly two VaR measures and three stress results. The version-controlled
+read-only QA pack passed all object, grain, source-reconciliation, currency,
+completeness, and rerun-control checks.
+
 ## Status definitions
 
 | Status | Meaning |
@@ -50,7 +60,7 @@ manifest, proving append-only replay safety.
 | 05 | Silver Quality and Canonical Data | Complete | `0d09a6a` — canonical merge target alias fix |
 | 06 | Gold Analytics Foundation | Complete | `632adc0` — audited Gold portfolio daily metrics v2 |
 | 07 | Risk Measures and Validation | Complete | `87e1f23` — risk validation precision alignment |
-| 08 | SQL Serving and DBeaver QA | Not started | — |
+| 08 | SQL Serving and Databricks QA | Complete | Pending commit |
 | 09 | Power BI Semantic Model | Not started | — |
 | 10 | Market Risk Dashboard | Not started | — |
 | 11 | Automation, Deployment, and CI | Not started | — |
@@ -199,6 +209,13 @@ evidence; this date does not assert the execution date of each runtime attempt.
 | 2026-09-09 | 07 | Latest local quality gate | Pass | 230 pytest tests passed, Ruff passed, and `market-risk-check` reported 11/11 |
 | 2026-09-09 | 07 | Runtime warning review | Noted | Expected Spark global-window warning is bounded to the 251-row VaR distribution |
 
+| 2026-09-09 | 08 | Local serving and QA tests | Pass | `pytest -q tests/test_phase_08_serving_sql.py` reported 8 passed; `git diff --check` passed |
+| 2026-09-09 | 08 | Serving object deployment | Pass | Five expected consumer views were created successfully in `workspace.devin_market_risk_dev` |
+| 2026-09-09 | 08 | Daily and position serving grain | Pass | Daily: 8 rows/8 keys/0 duplicates; position: 120 rows/120 keys/0 duplicates; USD only |
+| 2026-09-09 | 08 | Gold and serving reconciliation | Pass | Canonical Gold daily metrics and served daily analytics both returned 8 rows |
+| 2026-09-09 | 08 | Risk rerun control | Pass | Two selected runs/keys/0 duplicates; CORE attempt 3 and LONG_SHORT attempt 1 only |
+| 2026-09-09 | 08 | Complete risk bundles | Pass | Each selected run served exactly 2 VaR measures and 3 stress results |
+
 ## Handoffs
 
 Completed phase handoffs belong in `docs/handoffs/` and use
@@ -216,6 +233,8 @@ Completed phase handoffs belong in `docs/handoffs/` and use
   runtime and independent reconciliation, explain-back, and Phase 07 readiness
 - `docs/handoffs/phase-07-handoff.md` — Phase 07 risk measures, live runs, replay
   safety, and independent reconciliation evidence
+- `docs/handoffs/phase-08-handoff.md` — Phase 08 serving views, Databricks SQL
+  QA, rerun-selection control, and Phase 09 readiness
 
 ## New-chat kickoff prompt
 
