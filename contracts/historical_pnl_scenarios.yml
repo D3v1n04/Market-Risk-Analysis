@@ -1,0 +1,160 @@
+contract_version: 1.0.0
+dataset: historical_pnl_scenarios
+dataset_class: gold_risk_fact
+description: Auditable one-day historical-simulation portfolio PnL and loss scenarios from the approved 2016 adjusted-price history.
+grain: One row represents one adjacent prior-date and scenario-date return observation for one portfolio risk run.
+
+primary_key:
+  - risk_run_id
+  - scenario_date
+
+foreign_keys:
+  - fields: [risk_run_id]
+    references: risk_runs.risk_run_id
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+
+fields:
+  - name: risk_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: prior_price_date
+    type: DATE
+    nullable: false
+  - name: scenario_date
+    type: DATE
+    nullable: false
+  - name: return_observation_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: simulated_portfolio_pnl
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Sum of each signed December 30 position market value multiplied by its adjacent adjusted-price return; cash return is zero.
+  - name: loss_amount
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Signed loss amount equal to negative simulated portfolio PnL; a simulated gain has a negative loss amount.
+  - name: input_static_exposure_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_prior_price_partition_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_scenario_price_partition_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+calculation:
+  methodology: ONE_DAY_HISTORICAL_SIMULATION
+  history_start_date: '2016-01-04'
+  history_end_date: '2016-12-30'
+  trading_session_count: 252
+  return_observation_count: 251
+  minimum_return_observation_count: 250
+  return_formula: adjusted_close[t] / adjusted_close[t-1] - 1
+  exposure_policy: BUY_AND_HOLD_NO_REBALANCE_NO_LATER_CORPORATE_ACTIONS
+  static_exposure_source_date: '2016-01-07'
+  static_exposure_valuation_date: '2016-12-30'
+  portfolio_pnl_formula: Sum signed December 30 position market value multiplied by each instrument historical return; cash return is zero.
+  loss_amount_formula: -simulated_portfolio_pnl
+  currency_policy: USD_ONLY_NO_FX
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 2
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_declared_scale
+  fields:
+    - portfolio_id
+    - prior_price_date
+    - scenario_date
+    - return_observation_number
+    - base_currency
+    - simulated_portfolio_pnl
+    - loss_amount
+    - input_static_exposure_sha256
+    - input_prior_price_partition_sha256
+    - input_scenario_price_partition_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - risk_run_id
+    - calculated_at_utc
+    - contract_version
+
+quality_rules:
+  - rule_id: HISTORICAL_PNL_SCENARIO_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Risk run and scenario date are unique together.
+  - rule_id: HISTORICAL_PNL_SCENARIO_DATE_ADJACENCY
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Prior price date immediately precedes scenario date in the approved 2016 trading-date spine.
+  - rule_id: HISTORICAL_PNL_SCENARIO_COUNT_COMPLETE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Every successful risk run has exactly 251 scenario rows and at least 250 observations are available.
+  - rule_id: HISTORICAL_PNL_SCENARIO_FORMULA_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Simulated PnL equals the signed static December 30 market values multiplied by adjusted-price returns, with cash return fixed at zero and no intermediate rounding.
+  - rule_id: HISTORICAL_PNL_SCENARIO_LOSS_SIGN_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Loss amount equals negative simulated portfolio PnL exactly; simulated gains have negative loss amounts and no clipping or flooring is allowed.
+  - rule_id: HISTORICAL_PNL_SCENARIO_CURRENCY_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: All exposure and PnL inputs use USD; no FX conversion is implied.
+  - rule_id: HISTORICAL_PNL_SCENARIO_LINEAGE_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Static-exposure and both adjacent price-partition SHA-256 values identify the exact input records.
+  - rule_id: HISTORICAL_PNL_SCENARIO_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.

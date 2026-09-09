@@ -1,0 +1,276 @@
+contract_version: 1.0.0
+dataset: risk_runs
+dataset_class: operational_audit
+description: Immutable audit evidence for one complete portfolio and as-of-date historical-risk and stress-risk bundle.
+grain: One row represents one complete risk-calculation attempt for one portfolio and one end-of-history as-of date.
+
+operation_scope:
+  input_trust_boundary: TRUSTED_SILVER_AND_PUBLISHED_GOLD
+  output_layer: GOLD
+  output_datasets_per_run: 3
+  portfolios_per_run: 1
+  as_of_dates_per_run: 1
+  atomic_publication: true
+
+primary_key:
+  - risk_run_id
+
+natural_key:
+  - portfolio_id
+  - as_of_date
+  - attempt_number
+
+foreign_keys:
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [reprocess_of_risk_run_id]
+    references: risk_runs.risk_run_id
+    nullable: true
+
+fields:
+  - name: risk_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+    description: Unique immutable identifier for one complete risk bundle attempt.
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: as_of_date
+    type: DATE
+    nullable: false
+    description: End-of-history market-close date used to reprice the static exposure.
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: attempt_number
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: reprocess_of_risk_run_id
+    type: STRING
+    nullable: true
+    format: UUID
+  - name: trigger_type
+    type: STRING
+    nullable: false
+    allowed_values: [MANUAL, SCHEDULED, RECOVERY]
+  - name: started_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: completed_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: status
+    type: STRING
+    nullable: false
+    allowed_values: [PENDING, RUNNING, SUCCEEDED, SUCCEEDED_WITH_WARNINGS, FAILED]
+
+  - name: methodology
+    type: STRING
+    nullable: false
+    allowed_values: [ONE_DAY_HISTORICAL_SIMULATION]
+  - name: holding_period_days
+    type: BIGINT
+    nullable: false
+    allowed_values: [1]
+  - name: return_price_field
+    type: STRING
+    nullable: false
+    allowed_values: [daily_prices.adjusted_close_price]
+  - name: return_formula
+    type: STRING
+    nullable: false
+    allowed_values: ['adjusted_close[t] / adjusted_close[t-1] - 1']
+  - name: price_history_start_date
+    type: DATE
+    nullable: false
+  - name: price_history_end_date
+    type: DATE
+    nullable: false
+  - name: trading_session_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 252
+  - name: return_observation_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 250
+  - name: minimum_return_observation_count
+    type: BIGINT
+    nullable: false
+    allowed_values: [250]
+  - name: confidence_levels
+    type: ARRAY<DECIMAL(3,2)>
+    nullable: false
+
+  - name: static_exposure_source_date
+    type: DATE
+    nullable: false
+    description: Trusted Silver position and cash date used to establish static exposure.
+  - name: static_exposure_valuation_date
+    type: DATE
+    nullable: false
+    description: End-of-history date on which the static exposure is repriced.
+  - name: static_exposure_policy
+    type: STRING
+    nullable: false
+    allowed_values: [BUY_AND_HOLD_NO_REBALANCE_NO_LATER_CORPORATE_ACTIONS]
+
+  - name: input_dataset_names
+    type: ARRAY<STRING>
+    nullable: false
+  - name: input_record_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: input_manifest_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_static_exposure_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_price_history_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_stress_scenario_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_stress_shock_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+  - name: expected_historical_pnl_scenario_count
+    type: BIGINT
+    nullable: false
+    allowed_values: [251]
+  - name: calculated_historical_pnl_scenario_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: expected_var_measure_count
+    type: BIGINT
+    nullable: false
+    allowed_values: [2]
+  - name: calculated_var_measure_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: expected_stress_result_count
+    type: BIGINT
+    nullable: false
+    allowed_values: [3]
+  - name: calculated_stress_result_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: published
+    type: BOOLEAN
+    nullable: false
+  - name: published_at_utc
+    type: TIMESTAMP
+    nullable: true
+    timezone: UTC
+  - name: warning_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 0
+  - name: failed_rule_ids
+    type: ARRAY<STRING>
+    nullable: false
+  - name: error_code
+    type: STRING
+    nullable: true
+  - name: error_message
+    type: STRING
+    nullable: true
+  - name: historical_pnl_scenarios_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: var_measures_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: stress_results_contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: code_version
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{40}$'
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+methodology:
+  history_window:
+    start_date: '2016-01-04'
+    end_date: '2016-12-30'
+    trading_session_count: 252
+    return_observation_count: 251
+    minimum_return_observation_count: 250
+  confidence_levels: [0.95, 0.99]
+  static_exposure:
+    source_date: '2016-01-07'
+    valuation_date: '2016-12-30'
+    policy: BUY_AND_HOLD_NO_REBALANCE_NO_LATER_CORPORATE_ACTIONS
+  intermediate_rounding_allowed: false
+  currency_policy: USD_ONLY_NO_FX
+
+publication_semantics:
+  bundle_key: [portfolio_id, as_of_date]
+  mode: ATOMIC_APPEND_COMPLETE_BUNDLE
+  unchanged_behavior: Record a successful immutable rerun and preserve prior published bundle evidence.
+  failure_behavior: Publish none of the three output datasets for the failed risk run.
+
+quality_rules:
+  - rule_id: RISK_RUN_NATURAL_KEY_UNIQUE
+    scope: AUDIT_DATASET
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: Portfolio, as-of date, and attempt number are unique together.
+  - rule_id: RISK_RUN_METHOD_CONFIGURATION_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: The method is one-day historical simulation over the approved 2016 history, with the approved return formula, observation policy, and confidence levels.
+  - rule_id: RISK_RUN_STATIC_EXPOSURE_POLICY_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: Trusted January 7 Silver quantities and cash are carried unchanged under buy-and-hold, no-rebalance, and no-later-corporate-actions assumptions then repriced on December 30.
+  - rule_id: RISK_RUN_INPUT_LINEAGE_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: The input manifest and static-exposure, price-history, stress-scenario, and stress-shock SHA-256 digests identify governed inputs.
+  - rule_id: RISK_RUN_OUTPUT_COUNTS_RECONCILE
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: A successful run has exactly 251 historical PnL scenarios, two VaR measures, and three stress results.
+  - rule_id: RISK_RUN_PUBLICATION_STATE_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: Published state, completion timestamp, output counts, status, and failures agree for the complete bundle.
+  - rule_id: RISK_RUN_VERSION_LINEAGE_VALID
+    scope: AUDIT_RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_AUDIT
+    assertion: Output-contract, calculation, code, and audit-contract versions are present and valid.

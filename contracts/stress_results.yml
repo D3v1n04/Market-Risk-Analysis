@@ -1,0 +1,163 @@
+contract_version: 1.0.0
+dataset: stress_results
+dataset_class: gold_risk_fact
+description: Portfolio-level results of approved deterministic hypothetical stress scenarios.
+grain: One row represents one approved active scenario evaluated against one portfolio risk run.
+
+primary_key:
+  - risk_run_id
+  - scenario_id
+
+foreign_keys:
+  - fields: [risk_run_id]
+    references: risk_runs.risk_run_id
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+  - fields: [scenario_id]
+    references: stress_scenarios.scenario_id
+
+fields:
+  - name: risk_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: as_of_date
+    type: DATE
+    nullable: false
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: scenario_id
+    type: STRING
+    nullable: false
+  - name: scenario_version
+    type: STRING
+    nullable: false
+  - name: shock_count
+    type: BIGINT
+    nullable: false
+    allowed_values: [15]
+  - name: stress_pnl
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Sum of signed static market value multiplied by the approved signed hypothetical shock ratio.
+  - name: stressed_nav
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+  - name: input_static_exposure_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_stress_scenario_record_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_shock_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+calculation:
+  scenario_type: DETERMINISTIC_HYPOTHETICAL
+  approved_active_scenario_ids:
+    - BROAD_MARKET_DOWN_10
+    - TECHNOLOGY_CORRECTION
+    - GEOPOLITICAL_SUPPLY_SHOCK
+  required_shock_count: 15
+  position_stress_pnl_formula: signed_market_value * shock_ratio
+  portfolio_stress_pnl_formula: Sum position stress PnL across all 15 instruments.
+  stressed_nav_formula: static_end_of_history_nav + stress_pnl
+  static_exposure_policy: BUY_AND_HOLD_NO_REBALANCE_NO_LATER_CORPORATE_ACTIONS
+  currency_policy: USD_ONLY_NO_FX
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 2
+  hypothetical_not_forecast: true
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_declared_scale
+  fields:
+    - portfolio_id
+    - as_of_date
+    - base_currency
+    - scenario_id
+    - scenario_version
+    - shock_count
+    - stress_pnl
+    - stressed_nav
+    - input_static_exposure_sha256
+    - input_stress_scenario_record_sha256
+    - input_shock_set_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - risk_run_id
+    - calculated_at_utc
+    - contract_version
+
+quality_rules:
+  - rule_id: STRESS_RESULT_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Risk run and scenario ID are unique together.
+  - rule_id: STRESS_RESULT_APPROVED_SCENARIO_SET_COMPLETE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Every successful risk run has exactly the three approved active deterministic hypothetical scenarios.
+  - rule_id: STRESS_RESULT_SHOCK_COVERAGE_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Each result uses exactly 15 approved shocks covering the active instrument universe once.
+  - rule_id: STRESS_RESULT_FORMULA_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    tolerance: '0.0000000000000001'
+    assertion: Stress PnL equals the sum of signed static market value multiplied by shock ratio, and stressed NAV equals static end-of-history NAV plus stress PnL without intermediate rounding.
+  - rule_id: STRESS_RESULT_CURRENCY_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Static exposure and stress result values are USD; no FX conversion is implied.
+  - rule_id: STRESS_RESULT_HYPOTHETICAL_NOT_FORECAST
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Stress scenarios are deterministic hypothetical assumptions and are never described as forecasts.
+  - rule_id: STRESS_RESULT_LINEAGE_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Static-exposure, scenario-record, and shock-set SHA-256 values identify the exact governed inputs.
+  - rule_id: STRESS_RESULT_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.

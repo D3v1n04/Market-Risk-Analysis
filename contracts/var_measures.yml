@@ -1,0 +1,152 @@
+contract_version: 1.0.0
+dataset: var_measures
+dataset_class: gold_risk_fact
+description: One-day historical-simulation Value at Risk measures from auditable simulated portfolio loss scenarios.
+grain: One row represents one approved confidence-level VaR measure for one portfolio risk run.
+
+primary_key:
+  - risk_run_id
+  - confidence_level
+
+foreign_keys:
+  - fields: [risk_run_id]
+    references: risk_runs.risk_run_id
+  - fields: [portfolio_id]
+    references: portfolios.portfolio_id
+
+fields:
+  - name: risk_run_id
+    type: STRING
+    nullable: false
+    format: UUID
+  - name: portfolio_id
+    type: STRING
+    nullable: false
+  - name: as_of_date
+    type: DATE
+    nullable: false
+  - name: base_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: confidence_level
+    type: DECIMAL(3,2)
+    nullable: false
+    allowed_values: [0.95, 0.99]
+    unit: decimal_probability
+  - name: observation_count
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 250
+  - name: quantile_rank
+    type: BIGINT
+    nullable: false
+    minimum_inclusive: 1
+  - name: var_amount
+    type: DECIMAL(38,16)
+    nullable: false
+    unit: base_currency
+    description: Selected empirical discrete loss amount; it is an estimate, not a forecast or maximum possible loss.
+  - name: input_historical_pnl_scenario_set_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: input_static_exposure_sha256
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+  - name: calculation_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: calculated_at_utc
+    type: TIMESTAMP
+    nullable: false
+    timezone: UTC
+  - name: contract_version
+    type: STRING
+    nullable: false
+    format: '^[0-9]+\.[0-9]+\.[0-9]+$'
+  - name: record_hash
+    type: STRING
+    nullable: false
+    format: '^[0-9a-f]{64}$'
+
+calculation:
+  methodology: ONE_DAY_HISTORICAL_SIMULATION
+  confidence_levels: [0.95, 0.99]
+  minimum_observation_count: 250
+  quantile_method: EMPIRICAL_DISCRETE_NO_INTERPOLATION
+  quantile_rank_formula: ceil(confidence_level * observation_count)
+  var_amount_formula: The quantile_rank-th loss amount after sorting simulated loss amounts in ascending order, with no clipping or interpolation.
+  known_quantile_ranks:
+    - confidence_level: 0.95
+      observation_count: 251
+      quantile_rank: 239
+    - confidence_level: 0.99
+      observation_count: 251
+      quantile_rank: 249
+  currency_policy: USD_ONLY_NO_FX
+  intermediate_rounding_allowed: false
+  presentation_rounding_scale: 2
+  limitation: VaR is an estimate from observed historical scenarios, never a forecast guarantee or maximum possible loss.
+
+record_hash:
+  algorithm: SHA-256
+  encoding: UTF-8
+  delimiter: '|'
+  null_token: <NULL>
+  decimal_format: fixed_declared_scale
+  fields:
+    - portfolio_id
+    - as_of_date
+    - base_currency
+    - confidence_level
+    - observation_count
+    - quantile_rank
+    - var_amount
+    - input_historical_pnl_scenario_set_sha256
+    - input_static_exposure_sha256
+    - calculation_version
+  excluded_mutable_fields:
+    - risk_run_id
+    - calculated_at_utc
+    - contract_version
+
+quality_rules:
+  - rule_id: VAR_MEASURE_KEY_UNIQUE
+    scope: DATASET
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Risk run and confidence level are unique together.
+  - rule_id: VAR_MEASURE_CONFIDENCE_LEVEL_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Confidence level is exactly 0.95 or 0.99.
+  - rule_id: VAR_MEASURE_OBSERVATION_COUNT_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Observation count is at least 250 and equals the complete historical scenario set count.
+  - rule_id: VAR_MEASURE_DISCRETE_QUANTILE_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Quantile rank equals ceil of confidence level multiplied by observation count, without interpolation; for 251 observations, ranks are 239 at 95 percent and 249 at 99 percent.
+  - rule_id: VAR_MEASURE_AMOUNT_RECONCILES
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    tolerance: '0.0000000000000001'
+    assertion: VaR amount equals the ranked historical loss amount without clipping, interpolation, or intermediate rounding.
+  - rule_id: VAR_MEASURE_LINEAGE_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Historical PnL scenario-set and static-exposure SHA-256 values identify the inputs to the measure.
+  - rule_id: VAR_MEASURE_RECORD_HASH_VALID
+    scope: RECORD
+    severity: ERROR
+    disposition: FAIL_RISK_RUN
+    assertion: Record hash matches the canonical SHA-256 calculation.

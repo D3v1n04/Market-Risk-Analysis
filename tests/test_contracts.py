@@ -23,6 +23,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "derivation_runs": "1.0.0",
     "ingestion_batches": "2.0.0",
     "instruments": "1.1.0",
+    "historical_pnl_scenarios": "1.0.0",
     "portfolios": "1.1.0",
     "portfolio_daily_metrics": "1.0.0",
     "portfolio_record_outcomes": "1.0.0",
@@ -30,10 +31,13 @@ EXPECTED_CONTRACT_VERSIONS = {
     "position_market_values": "1.0.0",
     "processing_runs": "2.0.0",
     "source_record_outcomes": "1.0.0",
+    "risk_runs": "1.0.0",
     "stress_scenario_shocks": "1.0.0",
     "stress_scenarios": "1.0.0",
+    "stress_results": "1.0.0",
     "target_allocations": "1.1.0",
     "trading_calendar": "1.0.0",
+    "var_measures": "1.0.0",
 }
 
 EXPECTED_CONTRACTS = set(EXPECTED_CONTRACT_VERSIONS)
