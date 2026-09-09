@@ -35,7 +35,8 @@ def test_risk_run_contract_models_an_immutable_complete_bundle() -> None:
         "output_datasets_per_run": 3,
         "portfolios_per_run": 1,
         "as_of_dates_per_run": 1,
-        "atomic_publication": True,
+        "atomic_publication": False,
+        "publication_visibility": "LOGICAL_SUCCESSFUL_RISK_RUN",
     }
     assert fields["risk_run_id"] == {
         "name": "risk_run_id",
@@ -54,6 +55,12 @@ def test_risk_run_contract_models_an_immutable_complete_bundle() -> None:
     assert fields["expected_var_measure_count"]["allowed_values"] == [2]
     assert fields["expected_stress_result_count"]["allowed_values"] == [3]
     assert fields["code_version"]["format"] == "^[0-9a-f]{40}$"
+    publication = contract["publication_semantics"]
+    assert publication["mode"] == "LOGICAL_APPEND_COMPLETE_BUNDLE"
+    assert publication["visibility_rule"] == (
+        "Results are publishable only when joined to a matching risk run "
+        "with successful terminal status and published=true."
+    )
 
 
 def test_risk_run_contract_pins_the_approved_history_and_static_exposure() -> None:

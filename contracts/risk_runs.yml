@@ -10,7 +10,8 @@ operation_scope:
   output_datasets_per_run: 3
   portfolios_per_run: 1
   as_of_dates_per_run: 1
-  atomic_publication: true
+  atomic_publication: false
+  publication_visibility: LOGICAL_SUCCESSFUL_RISK_RUN
 
 primary_key:
   - risk_run_id
@@ -234,9 +235,10 @@ methodology:
 
 publication_semantics:
   bundle_key: [portfolio_id, as_of_date]
-  mode: ATOMIC_APPEND_COMPLETE_BUNDLE
+  mode: LOGICAL_APPEND_COMPLETE_BUNDLE
+  visibility_rule: Results are publishable only when joined to a matching risk run with successful terminal status and published=true.
   unchanged_behavior: Record a successful immutable rerun and preserve prior published bundle evidence.
-  failure_behavior: Publish none of the three output datasets for the failed risk run.
+  failure_behavior: Failed-run result rows, if a table append had already succeeded before a later failure, are non-published evidence and never deleted; the matching risk run is FAILED with published=false.
 
 quality_rules:
   - rule_id: RISK_RUN_NATURAL_KEY_UNIQUE
