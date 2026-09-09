@@ -89,7 +89,7 @@ session, and asking questions never counts as falling behind.
 | 05 | Silver Quality and Canonical Data | Databricks, SQL, pytest | Typed, deduplicated data and rejected records are supported by quality evidence |
 | 06 | Gold Analytics Foundation | Python, SQL, Databricks | Market values, returns, exposures, and P&L reconcile to known examples |
 | 07 | Risk Measures and Validation | Python, SQL, Databricks | Historical VaR and stress results are explainable, tested, and reconciled |
-| 08 | SQL Serving and DBeaver QA | SQL warehouse, DBeaver | Stable Gold views and a repeatable SQL reconciliation pack are available |
+| 08 | SQL Serving and Databricks QA | SQL warehouse, Databricks SQL | Stable Gold views and a repeatable read-only SQL reconciliation pack are available |
 | 09 | Power BI Semantic Model | Power BI, DAX, Databricks connector | A validated star model and core measures match Databricks results |
 | 10 | Market Risk Dashboard | Power BI | An understandable, interactive dashboard answers defined risk questions |
 | 11 | Automation, Deployment, and CI | Databricks Workflows, bundles, GitHub | Repeatable deployments, scheduled execution, and automated gates work safely |
@@ -242,23 +242,32 @@ edge cases and insufficient history fail safely; results reconcile through two
 independent checks; assumptions are visible beside outputs; and the learner can
 explain what VaR does and does not claim.
 
-### Phase 08 — SQL Serving and DBeaver QA
+### Phase 08 — SQL Serving and Databricks QA
 
-**Learn:** serving layer, view, materialized result, query plan, warehouse, JDBC,
-least privilege, reconciliation query, and read-only consumer.
+**Learn:** serving layer, view, consumer grain, SQL warehouse, governed result,
+read-only consumer, rerun selection, reconciliation query, and query execution
+order.
 
 **Build:**
 
-- Publish stable, documented Gold views for consumers.
-- Grant only the access actually required by the available Free Edition setup.
-- Create DBeaver folders/scripts for repeatable row-count, uniqueness, null,
-  freshness, exposure, P&L, and VaR reconciliations.
-- Inspect query behavior and remove avoidable consumer-side work.
-- Save production-worthy SQL in Git rather than only in DBeaver history.
+- Publish stable, business-friendly views over canonical Phase 06 Gold analytics.
+- Publish controlled risk views that select exactly one complete, successful, and
+  published risk run per portfolio and as-of date.
+- Preserve the distinct consumer grains of daily analytics, position exposure, VaR,
+  and stress results rather than joining unrelated grains.
+- Create a version-controlled read-only Databricks SQL QA pack for object
+  inventory, row counts, business-key uniqueness, canonical-source reconciliation,
+  currency, risk-bundle completeness, and rerun control.
+- Store all serving and QA SQL in Git.
+- Use Databricks SQL Editor as the validated serving deployment and QA client;
+  DBeaver is optional exploration tooling.
 
-**Evidence and exit gate:** a clean DBeaver connection can run the QA pack; consumer
-views hide unnecessary internals; Databricks and DBeaver totals agree; and SQL files
-can be rerun by another developer.
+**Evidence and exit gate:** the five serving views exist and compile in Databricks;
+daily and position consumer grains have zero duplicate business keys; daily serving
+rows reconcile to canonical Gold; exactly one complete published risk run is served
+per portfolio and as-of date; every selected run has two VaR measures and three
+stress results; the read-only QA pack passes; local serving SQL tests pass; and the
+learner can explain why standalone reruns must not be summed.
 
 ### Phase 09 — Power BI Semantic Model
 
