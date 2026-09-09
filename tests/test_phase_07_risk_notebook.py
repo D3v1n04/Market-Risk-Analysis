@@ -86,7 +86,7 @@ def test_risk_notebook_is_valid_databricks_source() -> None:
     source = _read_notebook()
 
     assert source.startswith("# Databricks notebook source\n")
-    assert source.count("# COMMAND ----------") == 3
+    assert source.count("# COMMAND ----------") == 1
     ast.parse(source)
 
 
@@ -266,6 +266,11 @@ def test_risk_notebook_is_immutable_audited_and_serverless_safe() -> None:
     assert "sys.excepthook" not in source
     assert source.index("def execute_risk_run()") < source.index("previous_runs =")
     assert source.index("previous_runs =") < source.index("portfolio_inputs =")
+    execution_start = source.index("def execute_risk_run()")
+    assert "# COMMAND ----------" not in source[execution_start:]
+    assert source.index("portfolio_inputs =") < source.index(
+        "portfolio_rows = portfolio_inputs.collect()"
+    )
     assert source.rindex("execute_with_failed_audit(") > source.index(
         "def execute_risk_run()"
     )

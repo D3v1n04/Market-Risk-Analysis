@@ -500,8 +500,6 @@ def execute_risk_run() -> None:
         "static_exposure_policy=BUY_AND_HOLD_NO_REBALANCE_NO_LATER_CORPORATE_ACTIONS"
     )
 
-    # COMMAND ----------
-
     failures: list[str] = []
     add_failure(
         failures,
@@ -1213,8 +1211,6 @@ def execute_risk_run() -> None:
         f"input_manifest_sha256={input_manifest_digest} "
         f"manifest_entries={json.dumps(manifest_entries, sort_keys=True)}"
     )
-
-    # COMMAND ----------
 
     audit_values = {
         "risk_run_id": risk_run_id,
