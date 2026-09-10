@@ -2,10 +2,10 @@
 
 ## Current position
 
-- **Current phase:** Phase 09 — Power BI Semantic Model
-- **Commit:** `d9061b0` — `feat: add Power BI semantic model`
+- **Current phase:** Phase 10 — Market Risk Dashboard
+- **Commit:** `cc5123a` — `feat: add market risk Power BI dashboard`
 - **Status:** Complete
-- **Next phase:** Phase 10 — Market Risk Dashboard
+- **Next phase:** Phase 11 — Automation, Deployment, and CI
 - **Last updated:** 2026-09-10
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
@@ -46,6 +46,14 @@ measures, hidden technical join fields, and no automatic date tables. Power BI d
 VaR, and stress results reconciled to Databricks SQL, refresh succeeded, and no
 credential-bearing terms were found in version-controlled PBIP sources.
 
+Phase 10 built a durable local Power BI dashboard with Executive Overview, Exposure &
+Concentration, and VaR & Stress Testing pages. It uses the governed Phase 09 model
+only, preserves the distinct performance-date and risk-run-as-of-date contexts, and
+keeps VaR confidence levels and stress scenarios non-additive. Portfolio/date,
+confidence, and scenario interactions were manually validated; the PBIP saved and
+reopened successfully. The Phase 10 implementation record and handoff capture the
+visual design, validation results, and remaining Phase 11 boundary.
+
 ## Status definitions
 
 | Status | Meaning |
@@ -70,7 +78,7 @@ credential-bearing terms were found in version-controlled PBIP sources.
 | 07 | Risk Measures and Validation | Complete | `87e1f23` — risk validation precision alignment |
 | 08 | SQL Serving and Databricks QA | Complete | `2ca5212` — serving views and QA |
 | 09 | Power BI Semantic Model | Complete | `d9061b0` — Power BI semantic model |
-| 10 | Market Risk Dashboard | Not started | — |
+| 10 | Market Risk Dashboard | Complete | `cc5123a` — market risk Power BI dashboard |
 | 11 | Automation, Deployment, and CI | Not started | — |
 | 12 | End-to-End Validation and Portfolio Handoff | Not started | — |
 
@@ -230,6 +238,9 @@ evidence; this date does not assert the execution date of each runtime attempt.
 | 2026-09-10 | 09 | Refresh and project hygiene | Pass | Refresh succeeded; auto-date tables disabled; PBIP source scan found no credential-bearing terms |
 | 2026-09-10 | 09 | Local quality gate | Pass | Ruff passed, 238 pytest tests passed, environment check 11/11, and whitespace check passed |
 
+| 2026-09-10 | 10 | Power BI dashboard interaction and reopen validation | Pass | Three local dashboard pages were saved and reopened; portfolio, performance/risk dates, confidence, and scenario interactions behaved as designed |
+| 2026-09-10 | 10 | Local quality gate and project hygiene | Pass | Ruff passed, 238 pytest tests passed, environment check 11/11, whitespace check passed, and PBIP source credential scan returned no matches |
+
 ## Handoffs
 
 Completed phase handoffs belong in `docs/handoffs/` and use
@@ -249,6 +260,7 @@ Completed phase handoffs belong in `docs/handoffs/` and use
   safety, and independent reconciliation evidence
 - `docs/handoffs/phase-08-handoff.md` — Phase 08 serving views, Databricks SQL
   QA, rerun-selection control, and Phase 09 readiness
+- `docs/handoffs/phase-10-handoff.md` — Phase 10 dashboard design, interaction validation, PBIP source hygiene, and Phase 11 readiness
 
 ## New-chat kickoff prompt
 
