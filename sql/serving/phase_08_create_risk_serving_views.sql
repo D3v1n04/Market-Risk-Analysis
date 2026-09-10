@@ -124,12 +124,12 @@ CREATE OR REPLACE VIEW workspace.devin_market_risk_dev.vw_latest_published_stres
 COMMENT 'Deterministic stress-test results for the selected complete published risk run.'
 AS
 SELECT
-    selected.portfolio_id
-    selected.as_of_date
-    selected.base_currency
-    selected.risk_run_id
-    selected.attempt_number
-    selected.methodology
+    selected.portfolio_id,
+    selected.as_of_date,
+    selected.base_currency,
+    selected.risk_run_id,
+    selected.attempt_number,
+    selected.methodology,
     stress.scenario_id,
     stress.scenario_version,
     stress.shock_count,
