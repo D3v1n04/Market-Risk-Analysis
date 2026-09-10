@@ -1,0 +1,155 @@
+table FactPositionExposure
+	lineageTag: 47ddf4ff-09ba-49ad-af3a-b9ec4f256329
+
+	column portfolio_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: fc2831bf-332c-4f8f-b847-ac88973dcfe2
+		summarizeBy: none
+		sourceColumn: portfolio_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column instrument_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 25c6175e-4740-461c-af58-fe8e9e658a9a
+		summarizeBy: none
+		sourceColumn: instrument_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column valuation_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: f47e4f3b-eaf1-4afb-a895-aeded9b41333
+		summarizeBy: none
+		sourceColumn: valuation_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column position_side
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: b81870e4-5f33-4583-ad14-fbe0c55f7aad
+		summarizeBy: none
+		sourceColumn: position_side
+
+		annotation SummarizationSetBy = Automatic
+
+	column signed_quantity
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 023371ee-abc6-43c8-a562-56cd0bb62383
+		summarizeBy: sum
+		sourceColumn: signed_quantity
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column close_price_usd_per_share
+		dataType: double
+		sourceProviderType: decimal(20, 8)
+		lineageTag: 4a26ae06-c4db-493c-9398-1e6aea1281a9
+		summarizeBy: sum
+		sourceColumn: close_price_usd_per_share
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column quote_currency
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 930a0700-28be-439d-ba7d-b9235ea5fd28
+		summarizeBy: none
+		sourceColumn: quote_currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column base_currency
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: adfaf203-c213-4308-a55f-4a930d6a7c78
+		summarizeBy: none
+		sourceColumn: base_currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column signed_market_value_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 96e1caf6-69b8-4317-940c-e57c433d1c48
+		summarizeBy: sum
+		sourceColumn: signed_market_value_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column absolute_market_value_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 06e2b9a2-5396-4011-8e52-2e7ee3d240fb
+		summarizeBy: sum
+		sourceColumn: absolute_market_value_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column analytics_run_id
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 87588552-07a9-4f1a-9b4a-6711166970f8
+		summarizeBy: none
+		sourceColumn: analytics_run_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column calculation_version
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 53f84fc4-724d-4569-a1a6-302fe81221eb
+		summarizeBy: none
+		sourceColumn: calculation_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column calculated_at_utc
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 926176b0-0340-4f34-a0a2-91a1af4cd6a4
+		summarizeBy: none
+		sourceColumn: calculated_at_utc
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactPositionExposure = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-e87c98ff-1b61.cloud.databricks.com", "/sql/1.0/warehouses/8a43a06484503bfa", [Catalog = "", Database = ""]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    devin_market_risk_dev_Schema = workspace_Database{[Name="devin_market_risk_dev",Kind="Schema"]}[Data],
+				    vw_position_exposure_detail_View = devin_market_risk_dev_Schema{[Name="vw_position_exposure_detail",Kind="View"]}[Data]
+				in
+				    vw_position_exposure_detail_View
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "market_risk_semantic_model"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "1d604028-5d55-4d18-a2a6-28ffab760a30"
+  }
+}

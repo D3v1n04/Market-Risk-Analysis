@@ -31,3 +31,7 @@ htmlcov/
 coverage.xml
 
 .databricks
+
+
+# Power BI Desktop local workspace and cache
+**/.pbi/

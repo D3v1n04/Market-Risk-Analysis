@@ -1,0 +1,12 @@
+expression RiskRunDates_Staging =
+		let
+		    Source = DimRiskRun,
+		    #"Removed Other Columns" = Table.SelectColumns(Source,{"as_of_date"}),
+		    #"Renamed Columns" = Table.RenameColumns(#"Removed Other Columns",{{"as_of_date", "Date"}})
+		in
+		    #"Renamed Columns"
+	lineageTag: 11600558-ab4f-44c9-987f-7e50af70d6c6
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

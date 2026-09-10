@@ -1,0 +1,24 @@
+table DimPortfolio
+	lineageTag: 989dc6de-9ccc-459b-857a-d89050491160
+
+	column portfolio_id
+		dataType: string
+		lineageTag: 4011dff3-3bbb-4474-9838-ce7723f303e5
+		summarizeBy: none
+		sourceColumn: portfolio_id
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DimPortfolio = m
+		mode: import
+		source =
+				let
+				    Source = FactPortfolioDailyAnalytics,
+				    #"Removed Other Columns" = Table.SelectColumns(Source,{"portfolio_id"}),
+				    #"Removed Duplicates" = Table.Distinct(#"Removed Other Columns")
+				in
+				    #"Removed Duplicates"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,25 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_QueryOrder = ["DimRiskRun","FactStressResults","FactVaR","FactPortfolioDailyAnalytics","FactPositionExposure","DimPortfolio","DimInstrument","DimDate","RiskRunDates_Staging"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table DimRiskRun
+ref table FactStressResults
+ref table FactVaR
+ref table FactPortfolioDailyAnalytics
+ref table FactPositionExposure
+ref table DimPortfolio
+ref table DimInstrument
+ref table DimDate
+
+ref cultureInfo en-US

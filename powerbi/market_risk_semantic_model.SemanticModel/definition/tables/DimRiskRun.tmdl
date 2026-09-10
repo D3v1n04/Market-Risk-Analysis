@@ -1,0 +1,405 @@
+table DimRiskRun
+	isHidden
+	lineageTag: c2ef59dd-d489-4d4f-8efc-6eb303a126a8
+
+	column risk_run_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: eb25edff-5f3a-4b75-b0d4-b95daf0b1cbb
+		summarizeBy: none
+		sourceColumn: risk_run_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column portfolio_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: e59371f1-31e4-4ef8-8315-53db5772227e
+		summarizeBy: none
+		sourceColumn: portfolio_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column as_of_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: 084970f7-6d03-44d4-b3e4-83190da9951f
+		summarizeBy: none
+		sourceColumn: as_of_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column base_currency
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: e6f101c0-6c9c-490b-b9b8-03632b60eb14
+		summarizeBy: none
+		sourceColumn: base_currency
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column attempt_number
+		dataType: int64
+		isHidden
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 12fc7ab2-563e-44d5-9807-fd7e98af9deb
+		summarizeBy: sum
+		sourceColumn: attempt_number
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column reprocess_of_risk_run_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: db3d7471-4bb7-414f-a23b-c86cbb736819
+		summarizeBy: none
+		sourceColumn: reprocess_of_risk_run_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column trigger_type
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 964c0dee-8d18-40dc-a8da-94e39850488b
+		summarizeBy: none
+		sourceColumn: trigger_type
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column started_at_utc
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 656c7d91-eff7-4dde-96ab-b82e55e6f7e1
+		summarizeBy: none
+		sourceColumn: started_at_utc
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column completed_at_utc
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 675573f2-cdf6-4c3d-a8b4-1b93702f2239
+		summarizeBy: none
+		sourceColumn: completed_at_utc
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column status
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: fa024575-f434-4a43-b737-d59f8171667c
+		summarizeBy: none
+		sourceColumn: status
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column methodology
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 9861c25c-7865-4283-87ba-eacfcfee3486
+		summarizeBy: none
+		sourceColumn: methodology
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column holding_period_days
+		dataType: int64
+		isHidden
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 7e17d0b3-4798-45c7-a693-437a28730cd3
+		summarizeBy: sum
+		sourceColumn: holding_period_days
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column return_price_field
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 9e2f07a2-9ecc-40bd-a0ef-9f897615432b
+		summarizeBy: none
+		sourceColumn: return_price_field
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column return_formula
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: eb523141-bf20-4561-800c-c13bcedd2b2a
+		summarizeBy: none
+		sourceColumn: return_formula
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column price_history_start_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: 74d5b366-4ae9-4610-9e15-c5afb7188c51
+		summarizeBy: none
+		sourceColumn: price_history_start_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column price_history_end_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: 8de0882e-2f6f-4481-82f8-f87638bd16a4
+		summarizeBy: none
+		sourceColumn: price_history_end_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column trading_session_count
+		dataType: int64
+		isHidden
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: cdde044f-72b6-4ff3-9309-8d04cbe6dc1c
+		summarizeBy: sum
+		sourceColumn: trading_session_count
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column return_observation_count
+		dataType: int64
+		isHidden
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: f19e00ee-49fa-473b-909a-7a8227887a89
+		summarizeBy: sum
+		sourceColumn: return_observation_count
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column minimum_return_observation_count
+		dataType: int64
+		isHidden
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 70408e33-e234-418f-aa6d-b5bc4d98d42c
+		summarizeBy: sum
+		sourceColumn: minimum_return_observation_count
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column confidence_levels
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: b4d20157-cd10-45ed-9cda-a5a32afca628
+		summarizeBy: none
+		sourceColumn: confidence_levels
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column static_exposure_source_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: 25595372-d750-4c8b-a800-4683ac627d6e
+		summarizeBy: none
+		sourceColumn: static_exposure_source_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column static_exposure_valuation_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: 62632478-985d-472b-8d8a-483c7175ee97
+		summarizeBy: none
+		sourceColumn: static_exposure_valuation_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column static_exposure_policy
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 88cf36be-8fd9-4a9d-b6d4-253b3bb91ecf
+		summarizeBy: none
+		sourceColumn: static_exposure_policy
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column published
+		dataType: boolean
+		isHidden
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		sourceProviderType: bit
+		lineageTag: ad2258a9-2cea-4938-95c1-6c5fda15155f
+		summarizeBy: none
+		sourceColumn: published
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column published_at_utc
+		dataType: dateTime
+		isHidden
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: c09825c8-7f1f-45a7-993c-fa0bcee41940
+		summarizeBy: none
+		sourceColumn: published_at_utc
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column warning_count
+		dataType: int64
+		isHidden
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 56a30d69-d39d-4eba-ab58-b5668ae0c0cf
+		summarizeBy: sum
+		sourceColumn: warning_count
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column failed_rule_ids
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 0fb852e0-697d-4fb5-9fc8-0ac90e37c267
+		summarizeBy: none
+		sourceColumn: failed_rule_ids
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column calculation_version
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 0500b3cf-5d9d-4df2-b44e-17b89af798d2
+		summarizeBy: none
+		sourceColumn: calculation_version
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column code_version
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: e6792ff9-bc71-449c-b9cc-bf4ec43682cc
+		summarizeBy: none
+		sourceColumn: code_version
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column contract_version
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 4fafbf39-9bbd-4d8e-8b4a-44443725093c
+		summarizeBy: none
+		sourceColumn: contract_version
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DimRiskRun = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-e87c98ff-1b61.cloud.databricks.com", "/sql/1.0/warehouses/8a43a06484503bfa", [Catalog = "", Database = ""]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    devin_market_risk_dev_Schema = workspace_Database{[Name="devin_market_risk_dev",Kind="Schema"]}[Data],
+				    vw_latest_published_risk_runs_View = devin_market_risk_dev_Schema{[Name="vw_latest_published_risk_runs",Kind="View"]}[Data]
+				in
+				    vw_latest_published_risk_runs_View
+
+	changedProperty = IsHidden
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

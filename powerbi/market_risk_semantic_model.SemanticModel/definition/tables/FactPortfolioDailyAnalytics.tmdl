@@ -1,0 +1,325 @@
+table FactPortfolioDailyAnalytics
+	lineageTag: 3b85ef7f-948f-4b36-b258-ffb5d700b8bc
+
+	measure 'Closing NAV (Latest Date)' =
+
+			VAR LatestValuationDate =
+			    MAX(FactPortfolioDailyAnalytics[valuation_date])
+			RETURN
+			    CALCULATE(
+			        SUM(FactPortfolioDailyAnalytics[closing_nav_usd]),
+			        FactPortfolioDailyAnalytics[valuation_date] = LatestValuationDate
+			    )
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Portfolio Metrics
+		lineageTag: ea3a7ce2-7daf-42d3-99ef-e5166dcc873e
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Daily P&L' =
+
+			SUM(FactPortfolioDailyAnalytics[daily_pnl_usd])
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Portfolio Metrics
+		lineageTag: ccd720ca-b406-47ce-92d5-5f7a28e49a6f
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Gross Exposure (Latest Date)' =
+
+			VAR LatestValuationDate =
+			    MAX(FactPortfolioDailyAnalytics[valuation_date])
+			RETURN
+			    CALCULATE(
+			        SUM(FactPortfolioDailyAnalytics[gross_exposure_usd]),
+			        FactPortfolioDailyAnalytics[valuation_date] = LatestValuationDate
+			    )
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Portfolio Metrics
+		lineageTag: fc3655d0-87f3-4e25-bce2-cf1ef8f516ad
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Daily Return' =
+
+			IF(
+			    HASONEVALUE(DimPortfolio[portfolio_id])
+			        && HASONEVALUE(DimDate[Date]),
+			    MAX(FactPortfolioDailyAnalytics[daily_return_ratio])
+			)
+		formatString: 0.00%;-0.00%;0.00%
+		displayFolder: Portfolio Metrics
+		lineageTag: 48e7c205-754e-4a00-ba1f-4785fd9ae043
+
+	column portfolio_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 7ed84678-85a4-4ba7-bbbb-294e0671f876
+		summarizeBy: none
+		sourceColumn: portfolio_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column valuation_date
+		dataType: dateTime
+		isHidden
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: c9b5083b-ad4b-4901-a98c-16d05334b31a
+		summarizeBy: none
+		sourceColumn: valuation_date
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column base_currency
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: bca29dab-a0cc-48fe-8c39-75575ffda3eb
+		summarizeBy: none
+		sourceColumn: base_currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column position_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 0f5143af-0215-4d55-ba45-4c226127dfe0
+		summarizeBy: sum
+		sourceColumn: position_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column long_position_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 704a2358-7f93-4ec8-8fb0-7cf1cd451bc1
+		summarizeBy: sum
+		sourceColumn: long_position_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column short_position_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: ecbb93ba-b2e1-4f47-a631-2518e872bbb5
+		summarizeBy: sum
+		sourceColumn: short_position_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column long_exposure_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 3a5b7007-b625-4bbe-a3d6-643caa6cc73b
+		summarizeBy: sum
+		sourceColumn: long_exposure_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column short_exposure_magnitude_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 625674f1-92c9-49ba-a5dd-4e0d5e8aea30
+		summarizeBy: sum
+		sourceColumn: short_exposure_magnitude_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column gross_exposure_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 08229cf1-f17a-4be4-bd01-db4eff68da16
+		summarizeBy: sum
+		sourceColumn: gross_exposure_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column net_security_market_value_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 8002d986-5890-4838-bd0c-e10a1773a371
+		summarizeBy: sum
+		sourceColumn: net_security_market_value_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column closing_cash_balance_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: f43c1113-2173-473c-8cf5-9ae3505ef340
+		summarizeBy: sum
+		sourceColumn: closing_cash_balance_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column closing_nav_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 6cce21ec-a726-4e6d-b81c-263f7d7bbe5e
+		summarizeBy: sum
+		sourceColumn: closing_nav_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column baseline_nav_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 953ff909-bf58-45eb-a0c3-dd97eebe9817
+		summarizeBy: sum
+		sourceColumn: baseline_nav_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column baseline_source
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 6fcffaca-6d8c-443f-a049-b1c67ee5e2ef
+		summarizeBy: none
+		sourceColumn: baseline_source
+
+		annotation SummarizationSetBy = Automatic
+
+	column prior_valuation_date
+		dataType: dateTime
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: e4c0ff9f-8667-456e-af23-4c292eb48636
+		summarizeBy: none
+		sourceColumn: prior_valuation_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column daily_pnl_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 4ecaf66c-0c31-49c4-ac2a-7dba4a2c3458
+		summarizeBy: sum
+		sourceColumn: daily_pnl_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column daily_return_ratio
+		dataType: double
+		sourceProviderType: decimal(38, 18)
+		lineageTag: 692f046b-807e-4f55-8dfe-0b8ec05527b0
+		summarizeBy: sum
+		sourceColumn: daily_return_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column long_exposure_ratio
+		dataType: double
+		sourceProviderType: decimal(38, 18)
+		lineageTag: 2a1604e9-fbbd-424f-af2d-6b92ac8ee02b
+		summarizeBy: sum
+		sourceColumn: long_exposure_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column short_exposure_ratio
+		dataType: double
+		sourceProviderType: decimal(38, 18)
+		lineageTag: 7d06b9dd-b70e-40cc-b838-affa59684831
+		summarizeBy: sum
+		sourceColumn: short_exposure_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column gross_exposure_ratio
+		dataType: double
+		sourceProviderType: decimal(38, 18)
+		lineageTag: 68984970-7e51-4d96-8211-32a81ed36e1d
+		summarizeBy: sum
+		sourceColumn: gross_exposure_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column net_exposure_ratio
+		dataType: double
+		sourceProviderType: decimal(38, 18)
+		lineageTag: f69d241c-fcf3-4456-a1e3-78796eb1dca3
+		summarizeBy: sum
+		sourceColumn: net_exposure_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column analytics_run_id
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 261f593f-ac84-4acc-8b26-3fd1358a6ca7
+		summarizeBy: none
+		sourceColumn: analytics_run_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column calculation_version
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 3fc80745-adb0-4ba1-b44c-fbd024457692
+		summarizeBy: none
+		sourceColumn: calculation_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column calculated_at_utc
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 785ec950-8072-45b6-88e6-342b73c9832a
+		summarizeBy: none
+		sourceColumn: calculated_at_utc
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactPortfolioDailyAnalytics = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-e87c98ff-1b61.cloud.databricks.com", "/sql/1.0/warehouses/8a43a06484503bfa", [Catalog = "", Database = ""]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    devin_market_risk_dev_Schema = workspace_Database{[Name="devin_market_risk_dev",Kind="Schema"]}[Data],
+				    vw_portfolio_daily_analytics_View = devin_market_risk_dev_Schema{[Name="vw_portfolio_daily_analytics",Kind="View"]}[Data]
+				in
+				    vw_portfolio_daily_analytics_View
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

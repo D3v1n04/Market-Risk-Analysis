@@ -1,0 +1,183 @@
+table FactStressResults
+	lineageTag: f5985070-27d0-4575-a48c-37287abc231d
+
+	measure 'Stress P&L' =
+
+			IF(
+			    HASONEVALUE(FactStressResults[scenario_id]),
+			    SUM(FactStressResults[stress_pnl_usd])
+			)
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Risk Measures
+		lineageTag: 8199725c-48e8-44a0-8c65-84dee6af1550
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'Stressed NAV' =
+
+			IF(
+			    HASONEVALUE(FactStressResults[scenario_id]),
+			    SUM(FactStressResults[stressed_nav_usd])
+			)
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Risk Measures
+		lineageTag: 22baa5b3-a265-4e39-9ffa-bb30f5f7c30e
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	measure 'VaR Amount' =
+
+			IF(
+			    HASONEVALUE(FactVaR[confidence_level]),
+			    SUM(FactVaR[var_amount_usd])
+			)
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Risk Measures
+		lineageTag: 8504e182-558a-4cbe-83b7-511f2fc43bc6
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-US"}
+
+	column portfolio_id
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 4bfeb786-2b78-4ccd-9338-7b6fe67d7e83
+		summarizeBy: none
+		sourceColumn: portfolio_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column as_of_date
+		dataType: dateTime
+		formatString: Long Date
+		sourceProviderType: date
+		lineageTag: 43f5f66d-4057-4328-b88e-9e260b397733
+		summarizeBy: none
+		sourceColumn: as_of_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column base_currency
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 1756477b-38ed-4598-9063-cec2c060f985
+		summarizeBy: none
+		sourceColumn: base_currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column risk_run_id
+		dataType: string
+		isHidden
+		sourceProviderType: nvarchar(65535)
+		lineageTag: be59ed3a-b48a-4353-a06d-f747fb397a4c
+		summarizeBy: none
+		sourceColumn: risk_run_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column attempt_number
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 87e64756-fdb6-4b81-aff3-ab7e49d79fb9
+		summarizeBy: sum
+		sourceColumn: attempt_number
+
+		annotation SummarizationSetBy = Automatic
+
+	column methodology
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 52e436f2-60bb-4e62-aea0-42564341637b
+		summarizeBy: none
+		sourceColumn: methodology
+
+		annotation SummarizationSetBy = Automatic
+
+	column scenario_id
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 715d8aba-432b-427e-be83-8967b8ca6e8f
+		summarizeBy: none
+		sourceColumn: scenario_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column scenario_version
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 5cdff37f-eaec-4868-b0e4-7395d9194030
+		summarizeBy: none
+		sourceColumn: scenario_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column shock_count
+		dataType: int64
+		formatString: 0
+		sourceProviderType: bigint
+		lineageTag: 31455477-058d-45ec-8bba-e8ec4bd45a44
+		summarizeBy: sum
+		sourceColumn: shock_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column stress_pnl_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: b8ff2ace-170d-4e13-824b-6a80b066f427
+		summarizeBy: sum
+		sourceColumn: stress_pnl_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column stressed_nav_usd
+		dataType: double
+		sourceProviderType: decimal(38, 16)
+		lineageTag: 1e383396-4a19-4e2f-b0fe-1d6371b7db05
+		summarizeBy: sum
+		sourceColumn: stressed_nav_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column calculation_version
+		dataType: string
+		sourceProviderType: nvarchar(65535)
+		lineageTag: 7b0d850b-94ec-4570-81d0-bbc64c2ea9d0
+		summarizeBy: none
+		sourceColumn: calculation_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column calculated_at_utc
+		dataType: dateTime
+		formatString: General Date
+		sourceProviderType: datetime2
+		lineageTag: 091edba4-e1ba-45c5-b7a3-1a264e6292a1
+		summarizeBy: none
+		sourceColumn: calculated_at_utc
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactStressResults = m
+		mode: import
+		source =
+				let
+				    Source = DatabricksMultiCloud.Catalogs("dbc-e87c98ff-1b61.cloud.databricks.com", "/sql/1.0/warehouses/8a43a06484503bfa", [Catalog = "", Database = ""]),
+				    workspace_Database = Source{[Name="workspace",Kind="Database"]}[Data],
+				    devin_market_risk_dev_Schema = workspace_Database{[Name="devin_market_risk_dev",Kind="Schema"]}[Data],
+				    vw_latest_published_stress_results_View = devin_market_risk_dev_Schema{[Name="vw_latest_published_stress_results",Kind="View"]}[Data]
+				in
+				    vw_latest_published_stress_results_View
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

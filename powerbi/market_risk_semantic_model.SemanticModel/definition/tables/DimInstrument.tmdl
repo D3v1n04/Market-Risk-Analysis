@@ -1,0 +1,24 @@
+table DimInstrument
+	lineageTag: 576431ea-7b3f-4513-95c2-ba1cef069081
+
+	column instrument_id
+		dataType: string
+		lineageTag: ad84e7bb-15a6-4975-9813-a632de2daeb7
+		summarizeBy: none
+		sourceColumn: instrument_id
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DimInstrument = m
+		mode: import
+		source =
+				let
+				    Source = FactPositionExposure,
+				    #"Removed Duplicates" = Table.Distinct(Source, {"instrument_id"}),
+				    #"Removed Other Columns" = Table.SelectColumns(#"Removed Duplicates",{"instrument_id"})
+				in
+				    #"Removed Other Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

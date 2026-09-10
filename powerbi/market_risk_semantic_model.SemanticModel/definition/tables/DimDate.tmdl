@@ -1,0 +1,95 @@
+table DimDate
+	lineageTag: a8999d24-f75d-43c0-80d6-ae3facb3dcdc
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: Long Date
+		lineageTag: 13de7240-24c1-494e-8824-66e01e0ca127
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Year = YEAR(DimDate[Date])
+		formatString: 0
+		lineageTag: df9726cf-6743-446a-8b4b-02945edb4a3d
+		summarizeBy: sum
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Number' = MONTH(DimDate[Date])
+		isHidden
+		formatString: 0
+		lineageTag: 15acfbcb-602e-4c18-9971-eb4505b13b4f
+		summarizeBy: sum
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Name' = FORMAT(DimDate[Date], "MMMM")
+		lineageTag: 03f2d3fc-0a06-4e8e-87df-a3475d26a0ab
+		summarizeBy: none
+		sortByColumn: 'Month Number'
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	hierarchy 'Calendar Hierarchy'
+		lineageTag: bec2e90b-76d0-4f69-9037-042bb1c3d4a0
+
+		level Year
+			lineageTag: de006d36-1c00-4b05-8e4f-0c255c6519f7
+			column: Year
+
+		level 'Month Name'
+			lineageTag: 78a4667c-621a-46dd-bd41-fc01234af085
+			column: 'Month Name'
+
+		level Date
+			lineageTag: b8a3d86f-9f4e-4f85-a081-ce5b94228dd5
+			column: Date
+
+		changedProperty = IsHidden
+
+	partition DimDate = m
+		mode: import
+		source =
+				let
+				    Source = FactPortfolioDailyAnalytics,
+				    #"Removed Other Columns" = Table.SelectColumns(Source, {"valuation_date"}),
+				    #"Renamed Columns" = Table.RenameColumns(
+				        #"Removed Other Columns",
+				        {{"valuation_date", "Date"}}
+				    ),
+				    #"Appended Query" = Table.Combine(
+				        {#"Renamed Columns", RiskRunDates_Staging}
+				    ),
+				    #"Observed Dates" = Table.Distinct(#"Appended Query"),
+				    StartDate = List.Min(#"Observed Dates"[Date]),
+				    EndDate = List.Max(#"Observed Dates"[Date]),
+				    DateList = List.Dates(
+				        StartDate,
+				        Duration.Days(EndDate - StartDate) + 1,
+				        #duration(1, 0, 0, 0)
+				    ),
+				    DimDate = Table.FromList(
+				        DateList,
+				        Splitter.SplitByNothing(),
+				        {"Date"}
+				    ),
+				    #"Changed Type" = Table.TransformColumnTypes(
+				        DimDate,
+				        {{"Date", type date}}
+				    )
+				in
+				    #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

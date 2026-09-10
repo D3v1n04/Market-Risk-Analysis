@@ -1,0 +1,8 @@
+{
+  "version": "4.0",
+  "datasetReference": {
+    "byPath": {
+      "path": "../market_risk_semantic_model.SemanticModel"
+    }
+  }
+}

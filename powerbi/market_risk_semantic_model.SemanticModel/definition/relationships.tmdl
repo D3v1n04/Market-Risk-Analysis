@@ -1,0 +1,35 @@
+relationship AutoDetected_193348e8-2f1b-4658-b480-5e0c70746b28
+	fromColumn: FactPositionExposure.instrument_id
+	toColumn: DimInstrument.instrument_id
+
+relationship 1aed2e91-65fd-4391-c158-ed990c09f712
+	fromColumn: DimRiskRun.portfolio_id
+	toColumn: DimPortfolio.portfolio_id
+
+relationship d50b6a86-f6c2-9026-83c3-2c5f894418f0
+	fromColumn: FactPortfolioDailyAnalytics.portfolio_id
+	toColumn: DimPortfolio.portfolio_id
+
+relationship 987811f1-ad90-5a94-0457-4260d25d34dd
+	fromColumn: FactPositionExposure.portfolio_id
+	toColumn: DimPortfolio.portfolio_id
+
+relationship 68160af2-14b4-454c-cc1e-ee2527e0865f
+	fromColumn: FactPortfolioDailyAnalytics.valuation_date
+	toColumn: DimDate.Date
+
+relationship 6d1d5f81-efaf-0c3e-0422-2ca267c53673
+	fromColumn: FactPositionExposure.valuation_date
+	toColumn: DimDate.Date
+
+relationship cacd529b-7dc1-bc14-d13a-526ec315f81e
+	fromColumn: DimRiskRun.as_of_date
+	toColumn: DimDate.Date
+
+relationship f42b10ef-7f1f-5207-e30c-46fc18920295
+	fromColumn: FactVaR.risk_run_id
+	toColumn: DimRiskRun.risk_run_id
+
+relationship 9f8dd546-de96-cb0f-e3fb-25d95d80ee65
+	fromColumn: FactStressResults.risk_run_id
+	toColumn: DimRiskRun.risk_run_id
