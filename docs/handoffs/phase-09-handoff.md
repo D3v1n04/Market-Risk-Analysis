@@ -62,16 +62,15 @@ measures, and reconciled outputs.
 ## Open questions or blockers
 
 - Phase 10 must design report visuals, slicers, and interaction behavior.
-- `sql/serving/phase_08_create_risk_serving_views.sql` has a separate pre-existing
-  unstaged change and must be validated/committed independently; it is not part of
-  Phase 09.
+- Separate Phase 08 source correction `04de383` adds the missing commas in the
+  stress-serving-view `SELECT` list. It is intentionally separate from Phase 09.
 
 ## Git checkpoint
 
 - **Branch:** `phase-09-power-bi-semantic-model`
 - **Implementation commit:** `d9061b0` — `feat: add Power BI semantic model`
-- **Working tree:** Phase 09 files committed; separate unstaged Phase 08 SQL change
-  intentionally remains.
+- **Working tree:** Clean after the Phase 09 commits and the separately scoped
+  Phase 08 source correction.
 - **Ignored/generated artifacts checked:** Power BI `.pbi/` local cache is ignored;
   PBIP source scan found no credential-bearing terms.
 
