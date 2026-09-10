@@ -2,11 +2,11 @@
 
 ## Current position
 
-- **Current phase:** Phase 08 — SQL Serving and Databricks QA
-- **Commit:** `2ca5212` — `feat: add governed Phase 08 serving views and QA`
+- **Current phase:** Phase 09 — Power BI Semantic Model
+- **Commit:** `d9061b0` — `feat: add Power BI semantic model`
 - **Status:** Complete
-- **Next phase:** Phase 09 — Power BI Semantic Model
-- **Last updated:** 2026-09-09
+- **Next phase:** Phase 10 — Market Risk Dashboard
+- **Last updated:** 2026-09-10
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
 Databricks baselines were verified: two Bronze tables, four Silver tables, two
@@ -39,6 +39,13 @@ serve exactly two VaR measures and three stress results. The version-controlled
 read-only QA pack passed all object, grain, source-reconciliation, currency,
 completeness, and rerun-control checks.
 
+Phase 09 created a durable Import-mode Power BI Project over only the five approved
+Phase 08 serving views. The model has eight intended tables, a marked continuous
+`DimDate`, nine active single-direction relationships, explicit portfolio and risk
+measures, hidden technical join fields, and no automatic date tables. Power BI daily,
+VaR, and stress results reconciled to Databricks SQL, refresh succeeded, and no
+credential-bearing terms were found in version-controlled PBIP sources.
+
 ## Status definitions
 
 | Status | Meaning |
@@ -62,7 +69,7 @@ completeness, and rerun-control checks.
 | 06 | Gold Analytics Foundation | Complete | `632adc0` — audited Gold portfolio daily metrics v2 |
 | 07 | Risk Measures and Validation | Complete | `87e1f23` — risk validation precision alignment |
 | 08 | SQL Serving and Databricks QA | Complete | `2ca5212` — serving views and QA |
-| 09 | Power BI Semantic Model | Not started | — |
+| 09 | Power BI Semantic Model | Complete | `d9061b0` — Power BI semantic model |
 | 10 | Market Risk Dashboard | Not started | — |
 | 11 | Automation, Deployment, and CI | Not started | — |
 | 12 | End-to-End Validation and Portfolio Handoff | Not started | — |
@@ -216,6 +223,12 @@ evidence; this date does not assert the execution date of each runtime attempt.
 | 2026-09-09 | 08 | Gold and serving reconciliation | Pass | Canonical Gold daily metrics and served daily analytics both returned 8 rows |
 | 2026-09-09 | 08 | Risk rerun control | Pass | Two selected runs/keys/0 duplicates; CORE attempt 3 and LONG_SHORT attempt 1 only |
 | 2026-09-09 | 08 | Complete risk bundles | Pass | Each selected run served exactly 2 VaR measures and 3 stress results |
+
+| 2026-09-10 | 09 | Power BI model sources | Pass | Imported only the five approved Phase 08 serving views through OAuth in Import mode |
+| 2026-09-10 | 09 | Model structure | Pass | Eight intended tables, marked continuous `DimDate`, and nine active single-direction `1:*` relationships |
+| 2026-09-10 | 09 | SQL reconciliation | Pass | Daily analytics (8 rows), VaR (4 rows), and stress results (6 rows) matched Power BI validation visuals |
+| 2026-09-10 | 09 | Refresh and project hygiene | Pass | Refresh succeeded; auto-date tables disabled; PBIP source scan found no credential-bearing terms |
+| 2026-09-10 | 09 | Local quality gate | Pass | Ruff passed, 238 pytest tests passed, environment check 11/11, and whitespace check passed |
 
 ## Handoffs
 
