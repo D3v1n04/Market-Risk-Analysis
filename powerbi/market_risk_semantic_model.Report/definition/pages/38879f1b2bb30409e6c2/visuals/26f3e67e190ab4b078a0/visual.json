@@ -1,0 +1,242 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "26f3e67e190ab4b078a0",
+  "position": {
+    "x": 569.9795501022495,
+    "y": 318.0368098159509,
+    "z": 5000,
+    "height": 401.799591002045,
+    "width": 511.73824130879348,
+    "tabOrder": 5000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DimInstrument"
+                    }
+                  },
+                  "Property": "instrument_id"
+                }
+              },
+              "queryRef": "DimInstrument.instrument_id",
+              "nativeQueryRef": "Instrument",
+              "displayName": "Instrument"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FactPositionExposure"
+                    }
+                  },
+                  "Property": "position_side"
+                }
+              },
+              "queryRef": "FactPositionExposure.position_side",
+              "nativeQueryRef": "Side",
+              "displayName": "Side"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "FactPositionExposure"
+                        }
+                      },
+                      "Property": "signed_quantity"
+                    }
+                  },
+                  "Function": 0
+                }
+              },
+              "queryRef": "Sum(FactPositionExposure.signed_quantity)",
+              "nativeQueryRef": "Quantity",
+              "displayName": "Quantity"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "FactPositionExposure"
+                        }
+                      },
+                      "Property": "signed_market_value_usd"
+                    }
+                  },
+                  "Function": 0
+                }
+              },
+              "queryRef": "Sum(FactPositionExposure.signed_market_value_usd)",
+              "nativeQueryRef": "Signed Market Value",
+              "displayName": "Signed Market Value"
+            },
+            {
+              "field": {
+                "Aggregation": {
+                  "Expression": {
+                    "Column": {
+                      "Expression": {
+                        "SourceRef": {
+                          "Entity": "FactPositionExposure"
+                        }
+                      },
+                      "Property": "absolute_market_value_usd"
+                    }
+                  },
+                  "Function": 0
+                }
+              },
+              "queryRef": "Sum(FactPositionExposure.absolute_market_value_usd)",
+              "nativeQueryRef": "Absolute Market Value",
+              "displayName": "Absolute Market Value"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "DimInstrument"
+                  }
+                },
+                "Property": "instrument_id"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Position Detail (Selected Date)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "e91507bb7a82ca7d705a",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "DimInstrument"
+              }
+            },
+            "Property": "instrument_id"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "6e020bd6584905168248",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FactPositionExposure"
+              }
+            },
+            "Property": "position_side"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "43846b098d7b3764d040",
+        "field": {
+          "Aggregation": {
+            "Expression": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactPositionExposure"
+                  }
+                },
+                "Property": "signed_quantity"
+              }
+            },
+            "Function": 0
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "6fb4310009804e2a00e0",
+        "field": {
+          "Aggregation": {
+            "Expression": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactPositionExposure"
+                  }
+                },
+                "Property": "signed_market_value_usd"
+              }
+            },
+            "Function": 0
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "9772f57dc520b3a333de",
+        "field": {
+          "Aggregation": {
+            "Expression": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactPositionExposure"
+                  }
+                },
+                "Property": "absolute_market_value_usd"
+              }
+            },
+            "Function": 0
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

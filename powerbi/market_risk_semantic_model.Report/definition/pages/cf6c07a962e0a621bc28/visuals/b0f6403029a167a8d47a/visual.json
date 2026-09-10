@@ -1,0 +1,75 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "b0f6403029a167a8d47a",
+  "position": {
+    "x": 966.05007664793061,
+    "y": 121.00153295861013,
+    "z": 7000,
+    "height": 150,
+    "width": 280,
+    "tabOrder": 7000
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FactStressResults"
+                    }
+                  },
+                  "Property": "Stressed NAV"
+                }
+              },
+              "queryRef": "FactStressResults.Stressed NAV",
+              "nativeQueryRef": "Stressed NAV",
+              "displayName": "Stressed NAV"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactStressResults"
+                  }
+                },
+                "Property": "Stressed NAV"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "fc12efb1458936a4a012",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FactStressResults"
+              }
+            },
+            "Property": "Stressed NAV"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

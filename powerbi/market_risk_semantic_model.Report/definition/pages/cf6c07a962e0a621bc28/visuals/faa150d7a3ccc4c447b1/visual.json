@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "faa150d7a3ccc4c447b1",
+  "position": {
+    "x": 9.810935104752172,
+    "y": 648.17577925396017,
+    "z": 7003,
+    "height": 71.946857434849264,
+    "width": 1217.8640776699031,
+    "tabOrder": 7003
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "VaR is a historical-simulation loss estimate at the selected confidence level. Stress results are deterministic scenarios—not forecasts or evidence that the event occurred.",
+                    "textStyle": {
+                      "fontFamily": "Times New Roman",
+                      "fontSize": "12pt"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "center"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "7acef90ae954a2d5286b",
+  "position": {
+    "x": 640.32703117015842,
+    "y": 121.00153295861013,
+    "z": 6000,
+    "height": 150,
+    "width": 280,
+    "tabOrder": 6000
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FactStressResults"
+                    }
+                  },
+                  "Property": "Stress P&L"
+                }
+              },
+              "queryRef": "FactStressResults.Stress P&L",
+              "nativeQueryRef": "Stress P&L ",
+              "displayName": "Stress P&L "
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactStressResults"
+                  }
+                },
+                "Property": "Stress P&L"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "d481700ae6d0b9a1d415",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FactStressResults"
+              }
+            },
+            "Property": "Stress P&L"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

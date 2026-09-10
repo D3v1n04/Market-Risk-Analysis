@@ -1,0 +1,57 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "94114d9a78e1eb4a0099",
+  "position": {
+    "x": 950,
+    "y": 130,
+    "z": 6000,
+    "height": 150,
+    "width": 290,
+    "tabOrder": 6000
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FactPortfolioDailyAnalytics"
+                    }
+                  },
+                  "Property": "Gross Exposure (Latest Date)"
+                }
+              },
+              "queryRef": "FactPortfolioDailyAnalytics.Gross Exposure (Latest Date)",
+              "nativeQueryRef": "Gross Exposure",
+              "displayName": "Gross Exposure"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactPortfolioDailyAnalytics"
+                  }
+                },
+                "Property": "Gross Exposure (Latest Date)"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

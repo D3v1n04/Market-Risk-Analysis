@@ -1,0 +1,75 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "a8b98565cd7be931cead",
+  "position": {
+    "x": 323.76085845682167,
+    "y": 121.00153295861013,
+    "z": 4000,
+    "height": 150,
+    "width": 280,
+    "tabOrder": 4000
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FactStressResults"
+                    }
+                  },
+                  "Property": "VaR Amount"
+                }
+              },
+              "queryRef": "FactStressResults.VaR Amount",
+              "nativeQueryRef": "Value at Risk",
+              "displayName": "Value at Risk"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FactStressResults"
+                  }
+                },
+                "Property": "VaR Amount"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "77b15b7a16bb26edd14b",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FactStressResults"
+              }
+            },
+            "Property": "VaR Amount"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
+  }
+}

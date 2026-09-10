@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
   "name": "cf6c07a962e0a621bc28",
-  "displayName": "Page 1",
+  "displayName": "VaR & Stress Testing ",
   "displayOption": "FitToPage",
   "height": 720,
   "width": 1280,
@@ -19,5 +19,17 @@
         }
       }
     ]
-  }
+  },
+  "visualInteractions": [
+    {
+      "source": "d11a4a9207018a0a0690",
+      "target": "04439b7eb06034a7930e",
+      "type": "NoFilter"
+    },
+    {
+      "source": "412db6f0087737506cee",
+      "target": "043ed60f5ebb6219c175",
+      "type": "NoFilter"
+    }
+  ]
 }
