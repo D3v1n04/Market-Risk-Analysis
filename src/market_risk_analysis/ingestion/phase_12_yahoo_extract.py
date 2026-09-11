@@ -74,9 +74,9 @@ def build_daily_price_rows(
         low_price = _decimal(observation.get("Low"), "Low", PRICE_SCALE)
         close_price = _decimal(observation.get("Close"), "Close", PRICE_SCALE)
         adjusted_close = _decimal(observation.get("Adj Close"), "Adj Close", PRICE_SCALE)
-        if high_price < max(open_price, low_price, close_price):
+        if Decimal(high_price) < max(Decimal(open_price), Decimal(low_price), Decimal(close_price)):
             raise ValueError(f"OHLC high is inconsistent for {instrument.instrument_id} {price_date}")
-        if low_price > min(open_price, high_price, close_price):
+        if Decimal(low_price) > min(Decimal(open_price), Decimal(high_price), Decimal(close_price)):
             raise ValueError(f"OHLC low is inconsistent for {instrument.instrument_id} {price_date}")
         volume = _volume(observation.get("Volume"))
         row = {
