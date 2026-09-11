@@ -43,8 +43,10 @@ EXPECTED_FILES = {
     },
 }
 
-# Defined by the preceding %run notebook at Databricks runtime.
-validated: dict[str, dict[str, object]]
+# Preserves the mapping created by the preceding %run notebook.
+validated = globals().get("validated")
+if not isinstance(validated, dict):
+    raise RuntimeError("Yahoo landing validation did not produce results")
 
 
 def require_equal(label: str, actual: object, expected: object) -> None:
