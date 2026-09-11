@@ -4,6 +4,7 @@ import argparse
 import csv
 import hashlib
 import json
+import uuid
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -376,7 +377,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_sha256 = hashlib.sha256(
         f"{price_sha256}|{action_sha256}|{mapping_sha256}".encode()
     ).hexdigest()
-    manifest_path = output_root / "runs" / run_sha256 / "manifest.json"
+    attempt_id = uuid.uuid4().hex
+    manifest_path = output_root / "attempts" / attempt_id / "manifest.json"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
         "source_id": SOURCE_ID,
@@ -399,7 +401,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "sha256": action_sha256,
         },
         "instrument_mapping_sha256": mapping_sha256,
-        "run_sha256": run_sha256,
+        "snapshot_sha256": run_sha256,
+        "attempt_id": attempt_id,
         "failures": failures,
         "status": "PARTIAL" if failures else "SUCCEEDED",
     }
