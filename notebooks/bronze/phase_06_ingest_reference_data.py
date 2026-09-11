@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from pyspark.dbutils import DBUtils
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
@@ -20,6 +21,15 @@ BRONZE_BATCH_TABLE = (
     "workspace.devin_market_risk_dev.bronze_ingestion_batches"
 )
 INGESTION_CONTRACT_VERSION = "2.0.0"
+
+
+WORKFLOW_TASK_VALUE_KEYS = {
+    "INSTRUMENTS": "instruments_batch_id",
+    "TARGET_ALLOCATIONS": "target_allocations_batch_id",
+    "STRESS_SCENARIOS": "stress_scenarios_batch_id",
+    "STRESS_SCENARIO_SHOCKS": "stress_scenario_shocks_batch_id",
+}
+
 
 REFERENCE_SOURCES = (
     {
@@ -526,6 +536,7 @@ def build_ingestion_plan(
 
 spark = SparkSession.builder.getOrCreate()
 spark.conf.set("spark.sql.session.timeZone", "UTC")
+dbutils = DBUtils(spark)
 
 # Complete the landing and schema preflight for every dataset before writing.
 prepared_sources: list[dict[str, Any]] = []
@@ -678,3 +689,38 @@ for plan in ingestion_plans:
     print(f"persisted_batch_id={batch_id}")
     print(f"persisted_batch_status={plan['batch_status']}")
     print(f"persisted_source_count={persisted_source_count}")
+
+effective_reference_batch_ids: dict[str, str] = {}
+
+for plan in ingestion_plans:
+    dataset_name = plan["manifest"]["dataset_name"]
+    effective_batch_id = (
+        plan["batch_id"]
+        if plan["should_write_business_rows"]
+        else plan["previous_successful_batch_id"]
+    )
+
+    if effective_batch_id is None:
+        raise ValueError(
+            "Effective reference batch ID is required after Bronze "
+            f"persistence for {dataset_name}"
+        )
+
+    effective_reference_batch_ids[dataset_name] = effective_batch_id
+
+require_equal(
+    "effective reference task-value datasets",
+    set(effective_reference_batch_ids),
+    set(WORKFLOW_TASK_VALUE_KEYS),
+)
+
+for dataset_name, task_value_key in WORKFLOW_TASK_VALUE_KEYS.items():
+    effective_batch_id = effective_reference_batch_ids[dataset_name]
+    dbutils.jobs.taskValues.set(
+        key=task_value_key,
+        value=effective_batch_id,
+    )
+    print(
+        f"workflow_task_value.{task_value_key}="
+        f"{effective_batch_id}"
+    )

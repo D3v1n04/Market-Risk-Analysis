@@ -188,3 +188,28 @@ def test_market_ingestion_reconciles_persisted_evidence() -> None:
         "contract_version",
     }
     assert all(f'"{field}"' in source for field in required_lineage_fields)
+
+
+def test_market_ingestion_publishes_effective_batch_ids_for_workflow() -> None:
+    source = _read_notebook()
+
+    assert "from pyspark.dbutils import DBUtils" in source
+    assert "dbutils = DBUtils(spark)" in source
+    assert "WORKFLOW_TASK_VALUE_KEYS = {" in source
+
+    expected_keys = {
+        "daily_prices_batch_id",
+        "corporate_actions_batch_id",
+    }
+    assert all(f'"{key}"' in source for key in expected_keys)
+
+    assert "effective_market_batch_ids: dict[str, str] = {}" in source
+    assert "else plan[\"previous_successful_batch_id\"]" in source
+    assert '"effective market task-value datasets"' in source
+    assert "dbutils.jobs.taskValues.set(" in source
+    assert "key=task_value_key" in source
+    assert "value=effective_batch_id" in source
+
+    assert source.index("dbutils.jobs.taskValues.set(") > source.index(
+        "reconcile_persisted_batch(spark=spark, plan=plan)"
+    )

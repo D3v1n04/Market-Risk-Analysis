@@ -206,3 +206,30 @@ def test_reference_ingestion_preserves_required_lineage() -> None:
     )
     assert '"persisted business batch lineage"' in source
     assert '"persisted candidate batch audit count"' in source
+
+
+def test_reference_ingestion_publishes_effective_batch_ids_for_workflow() -> None:
+    source = _read_notebook()
+
+    assert "from pyspark.dbutils import DBUtils" in source
+    assert "dbutils = DBUtils(spark)" in source
+    assert "WORKFLOW_TASK_VALUE_KEYS = {" in source
+
+    expected_keys = {
+        "instruments_batch_id",
+        "target_allocations_batch_id",
+        "stress_scenarios_batch_id",
+        "stress_scenario_shocks_batch_id",
+    }
+    assert all(f'"{key}"' in source for key in expected_keys)
+
+    assert "effective_reference_batch_ids: dict[str, str] = {}" in source
+    assert "else plan[\"previous_successful_batch_id\"]" in source
+    assert '"effective reference task-value datasets"' in source
+    assert "dbutils.jobs.taskValues.set(" in source
+    assert "key=task_value_key" in source
+    assert "value=effective_batch_id" in source
+
+    assert source.index("dbutils.jobs.taskValues.set(") > source.index(
+        "persisted candidate batch audit count"
+    )

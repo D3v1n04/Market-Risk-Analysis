@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from pyspark.dbutils import DBUtils
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
@@ -162,6 +163,7 @@ BRONZE_PORTFOLIO_TABLE = (
 
 spark = SparkSession.builder.getOrCreate()
 spark.conf.set("spark.sql.session.timeZone", "UTC")
+dbutils = DBUtils(spark)
 
 candidate_batch_id = str(uuid4())
 ingested_at_utc = datetime.now(UTC).replace(tzinfo=None)
@@ -405,3 +407,21 @@ print(
     "persisted_portfolio_source_count="
     f"{persisted_portfolio_source_count}"
 )
+
+effective_portfolio_batch_id = (
+    candidate_batch_id
+    if should_write_portfolios
+    else previous_successful_batch_id
+)
+
+if effective_portfolio_batch_id is None:
+    raise ValueError(
+        "Effective portfolio batch ID is required after Bronze persistence"
+    )
+
+dbutils.jobs.taskValues.set(
+    key="portfolio_batch_id",
+    value=effective_portfolio_batch_id,
+)
+
+print(f"workflow_task_value.portfolio_batch_id={effective_portfolio_batch_id}")

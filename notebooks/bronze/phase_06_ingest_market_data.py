@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+from pyspark.dbutils import DBUtils
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
@@ -28,6 +29,13 @@ BRONZE_BATCH_TABLE = (
     "workspace.devin_market_risk_dev.bronze_ingestion_batches"
 )
 INGESTION_CONTRACT_VERSION = "2.0.0"
+
+
+WORKFLOW_TASK_VALUE_KEYS = {
+    "DAILY_PRICES": "daily_prices_batch_id",
+    "CORPORATE_ACTIONS": "corporate_actions_batch_id",
+}
+
 
 APPROVED_DATASETS = {
     "DAILY_PRICES": {
@@ -331,6 +339,7 @@ def reconcile_persisted_batch(
 
 spark = SparkSession.builder.getOrCreate()
 spark.conf.set("spark.sql.session.timeZone", "UTC")
+dbutils = DBUtils(spark)
 validate_approved_specifications()
 
 # Complete every landing, record, and schema preflight before planning writes.
@@ -492,4 +501,40 @@ for plan in ingestion_plans:
     print(
         "persisted_deduplicated_count="
         f"{plan['deduplicated_count']}"
+    )
+
+
+effective_market_batch_ids: dict[str, str] = {}
+
+for plan in ingestion_plans:
+    dataset_name = plan["manifest"]["dataset_name"]
+    effective_batch_id = (
+        plan["batch_id"]
+        if plan["should_write_business_rows"]
+        else plan["previous_successful_batch_id"]
+    )
+
+    if effective_batch_id is None:
+        raise ValueError(
+            "Effective market batch ID is required after Bronze "
+            f"persistence for {dataset_name}"
+        )
+
+    effective_market_batch_ids[dataset_name] = effective_batch_id
+
+require_equal(
+    "effective market task-value datasets",
+    set(effective_market_batch_ids),
+    set(WORKFLOW_TASK_VALUE_KEYS),
+)
+
+for dataset_name, task_value_key in WORKFLOW_TASK_VALUE_KEYS.items():
+    effective_batch_id = effective_market_batch_ids[dataset_name]
+    dbutils.jobs.taskValues.set(
+        key=task_value_key,
+        value=effective_batch_id,
+    )
+    print(
+        f"workflow_task_value.{task_value_key}="
+        f"{effective_batch_id}"
     )

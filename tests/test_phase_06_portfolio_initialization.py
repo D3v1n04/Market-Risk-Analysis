@@ -172,3 +172,27 @@ def test_initialization_ingestion_is_idempotent_and_audited() -> None:
     assert '"duplicate_of_batch_id": duplicate_of_batch_id' in source
     assert "persisted_candidate_batch_count" in source
     assert "persisted_portfolio_source_count" in source
+
+
+def test_initialization_publishes_effective_batch_id_for_workflow() -> None:
+    source = _read_notebook()
+
+    assert "from pyspark.dbutils import DBUtils" in source
+    assert "dbutils = DBUtils(spark)" in source
+    assert "effective_portfolio_batch_id = (" in source
+    assert "if should_write_portfolios" in source
+    assert "else previous_successful_batch_id" in source
+    assert (
+        '"Effective portfolio batch ID is required after Bronze persistence"'
+        in source
+    )
+    assert 'key="portfolio_batch_id"' in source
+    assert "value=effective_portfolio_batch_id" in source
+    assert (
+        'workflow_task_value.portfolio_batch_id='
+        in source
+    )
+
+    assert source.index("dbutils.jobs.taskValues.set(") > source.index(
+        "persisted candidate batch count"
+    )
