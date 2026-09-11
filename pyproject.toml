@@ -9,6 +9,7 @@ description = "A learning-first market risk analysis lakehouse."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "exchange-calendars==4.13.2",
     "yfinance==1.7.0",
 ]
 
