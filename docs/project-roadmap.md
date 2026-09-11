@@ -331,29 +331,73 @@ continuous integration, artifact, secret scope, and rollback.
 triggered run completes in order; an intentional failure is diagnosable; local and CI
 quality gates agree; and rerunning does not corrupt results.
 
-### Phase 12 — End-to-End Validation and Portfolio Handoff
+### Phase 12 — Real Historical Data Foundation
 
-**Learn:** acceptance test, runbook, data lineage, operational ownership, recovery,
-cost awareness, technical demonstration, and retrospective.
+**Learn:** provider provenance, extraction request, exclusive end date, raw snapshot,
+content hash, source manifest, provider limitation, expected coverage, partial batch,
+and event-versus-observation data.
 
 **Build:**
 
-- Run one controlled batch from source through Bronze, Silver, Gold, SQL, and Power BI.
-- Reconcile record counts and key financial totals at every boundary.
-- Review secrets, permissions, ignored files, Free Edition constraints, and costs.
-- Finish architecture, data dictionary, testing, troubleshooting, and operating guides.
-- Prepare a concise technical demonstration and an honest limitations section.
-- Record future improvements without disguising them as completed work.
+- Define the machine-readable Yahoo Finance source profile and preserve the existing
+  deterministic fixture profile unchanged.
+- Pin the local `yfinance` client before any live request.
+- Extract the approved 2020–2025 history locally in Ubuntu/WSL using reviewed
+  internal-ID-to-provider-ticker mappings.
+- Preserve private source-aligned price and corporate-action snapshots with
+  deterministic manifests and SHA-256 evidence.
+- Land and ingest real snapshots into isolated Bronze attempts.
+- Validate, canonicalize, and reconcile real daily prices and corporate actions in
+  Silver, including partial coverage, corrections, and duplicate reruns.
 
-**Evidence and exit gate:** another person can follow the runbook; the end-to-end run
-has retained evidence; Git is clean and tagged appropriately; the dashboard matches
-the governed outputs; and the learner can explain the architecture and major choices.
+**Evidence and exit gate:** real source metadata, request window, client pin, mapping,
+private source hashes, Bronze batch attempts, Silver outcomes, quality evidence, and
+canonical fingerprints are reproducible. The synthetic 2016 baseline remains intact.
+No Gold, serving, or Power BI result is relabeled as real in this phase.
+
+### Phase 13 — Real Portfolio Analytics and Risk Rebuild
+
+**Learn:** real-history eligibility, common-session return grid, approved real-source
+selection, recalculation boundary, analytical lineage, and real-data reconciliation.
+
+**Build:**
+
+- Establish governed real portfolio inception and price-history eligibility.
+- Rebuild positions, cash balances, Gold market values, daily metrics, and historical
+  risk measures only from approved real Silver observations.
+- Reconcile financial signs, corporate-action treatment, exposure, P&L, VaR, and
+  stress results with independent checks.
+- Preserve prior synthetic runs as their own audit baseline rather than adding them
+  to real-source outputs.
+
+**Evidence and exit gate:** real Gold and risk outputs are selected by source and run
+lineage, have complete documented coverage, and reconcile through independent
+validations. Limitations of the provider and historical method remain visible.
+
+### Phase 14 — Real Serving, Power BI, and Final Handoff
+
+**Learn:** consumer-source selection, manual refresh boundary, serving compatibility,
+portfolio demonstration, and honest project handoff.
+
+**Build:**
+
+- Update serving views to select complete approved real-source results without mixing
+  synthetic and real analytical grains.
+- Refresh and validate the Power BI Desktop model and dashboard against the real
+  serving views.
+- Complete the runbook, data dictionary, architecture, evidence log, limitations,
+  recruiter-facing overview, and technical demonstration.
+
+**Evidence and exit gate:** the manual dashboard refresh matches governed real serving
+outputs, the synthetic baseline remains traceable, the repository is clean, and a
+reviewer can reproduce the stated scope without interpreting the project as
+production-grade.
 
 ## Optional extensions after the core project
 
 These are not required for the first complete system:
 
-- Licensed or live market-data ingestion
+- Additional licensed or provider market-data sources
 - Additional asset classes and pricing conventions
 - Parametric and Monte Carlo VaR
 - VaR backtesting and exception analysis
