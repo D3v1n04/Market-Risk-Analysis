@@ -1,0 +1,46 @@
+resources:
+  jobs:
+    yahoo_finance_silver_publication:
+      name: Yahoo Finance Silver Publication
+      max_concurrent_runs: 1
+
+      parameters:
+        - name: code_version
+          default: "REQUIRED_AT_MANUAL_RUN"
+        - name: trigger_type
+          default: "MANUAL"
+        - name: daily_prices_batch_id
+          default: "3e317573-8c81-46a1-bf39-80feadf94fe1"
+        - name: corporate_actions_batch_id
+          default: "779f9856-9270-467a-b394-dcf01c2acac0"
+
+      tasks:
+        - task_key: publish_exchange_calendar
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_12_publish_exchange_calendar.py
+
+        - task_key: process_yahoo_daily_prices
+          depends_on:
+            - task_key: publish_exchange_calendar
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_12_process_yahoo_market_data.py
+            base_parameters:
+              source_batch_id: "{{job.parameters.daily_prices_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: process_yahoo_corporate_actions
+          depends_on:
+            - task_key: publish_exchange_calendar
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_12_process_yahoo_market_data.py
+            base_parameters:
+              source_batch_id: "{{job.parameters.corporate_actions_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
