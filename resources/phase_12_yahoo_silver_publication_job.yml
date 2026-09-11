@@ -35,7 +35,7 @@ resources:
 
         - task_key: process_yahoo_corporate_actions
           depends_on:
-            - task_key: publish_exchange_calendar
+            - task_key: process_yahoo_daily_prices
           timeout_seconds: 1800
           max_retries: 0
           notebook_task:

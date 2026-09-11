@@ -28,10 +28,18 @@ def test_phase_12_yahoo_silver_job_requires_calendar_first() -> None:
 
     assert "publish_exchange_calendar" in source
     assert source.count("depends_on:") == 2
-    assert source.count("- task_key: publish_exchange_calendar") == 3
+    assert source.count("- task_key: publish_exchange_calendar") == 2
+    assert source.count("- task_key: process_yahoo_daily_prices") == 2
     assert source.count(
         "notebooks/silver/phase_12_process_yahoo_market_data.py"
     ) == 2
+
+    calendar_task = " - task_key: publish_exchange_calendar"
+    price_task = " - task_key: process_yahoo_daily_prices"
+    action_task = " - task_key: process_yahoo_corporate_actions"
+
+    assert source.index(calendar_task) < source.index(price_task)
+    assert source.index(price_task) < source.index(action_task)
 
 
 def test_phase_12_yahoo_silver_job_passes_exact_batch_lineage() -> None:
