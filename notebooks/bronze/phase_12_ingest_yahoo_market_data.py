@@ -28,6 +28,23 @@ BRONZE_TABLES = {
 REQUEST_START_DATE = "2020-01-01"
 REQUEST_END_DATE = "2026-01-01"
 CONTRACT_VERSION = "1.1.0"
+SOURCE_ID = "YAHOO_FINANCE"
+VOLUME_ROOT = Path(
+    "/Volumes/workspace/devin_market_risk_dev/bronze_landing/yahoo_finance"
+)
+EXPECTED_FILES = {
+    "DAILY_PRICES": {
+        "folder": "daily_prices",
+        "filename": "daily_prices.csv",
+    },
+    "CORPORATE_ACTIONS": {
+        "folder": "corporate_actions",
+        "filename": "corporate_actions.csv",
+    },
+}
+
+# Defined by the preceding %run notebook at Databricks runtime.
+validated: dict[str, dict[str, object]]
 
 
 def require_equal(label: str, actual: object, expected: object) -> None:
