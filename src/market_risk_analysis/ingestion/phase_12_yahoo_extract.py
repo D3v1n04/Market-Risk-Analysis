@@ -342,12 +342,33 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         except Exception as exc:
             failures.append(f"{instrument.instrument_id}: {type(exc).__name__}")
-    price_path = output_root / "daily_prices.csv"
-    action_path = output_root / "corporate_actions.csv"
-    price_sha256 = write_csv(price_path, fieldnames=DAILY_PRICE_FIELDS, rows=price_rows)
+    staging_root = output_root / "_staging"
+    price_path = staging_root / "daily_prices.csv"
+    action_path = staging_root / "corporate_actions.csv"
+    price_sha256 = write_csv(
+        price_path, fieldnames=DAILY_PRICE_FIELDS, rows=price_rows
+    )
     action_sha256 = write_csv(
         action_path, fieldnames=CORPORATE_ACTION_FIELDS, rows=action_rows
     )
+    price_target = output_root / "daily_prices" / price_sha256 / "daily_prices.csv"
+    action_target = (
+        output_root
+        / "corporate_actions"
+        / action_sha256
+        / "corporate_actions.csv"
+    )
+    price_target.parent.mkdir(parents=True, exist_ok=True)
+    action_target.parent.mkdir(parents=True, exist_ok=True)
+    price_path.replace(price_target)
+    action_path.replace(action_target)
+    mapping_path = project_root / "data/fixtures/instruments.csv"
+    mapping_sha256 = hashlib.sha256(mapping_path.read_bytes()).hexdigest()
+    run_sha256 = hashlib.sha256(
+        f"{price_sha256}|{action_sha256}|{mapping_sha256}".encode()
+    ).hexdigest()
+    manifest_path = output_root / "runs" / run_sha256 / "manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
         "source_id": SOURCE_ID,
         "client_version": "1.7.0",
@@ -359,21 +380,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         "retrieved_at_utc": _utc_timestamp(retrieved_at_utc),
         "instrument_count": len(mappings),
         "daily_prices": {
-            "path": price_path.name,
+            "path": price_target.relative_to(output_root).as_posix(),
             "record_count": len(price_rows),
             "sha256": price_sha256,
         },
         "corporate_actions": {
-            "path": action_path.name,
+            "path": action_target.relative_to(output_root).as_posix(),
             "record_count": len(action_rows),
             "sha256": action_sha256,
         },
+        "instrument_mapping_sha256": mapping_sha256,
+        "run_sha256": run_sha256,
         "failures": failures,
         "status": "PARTIAL" if failures else "SUCCEEDED",
     }
-    (output_root / "manifest.json").write_text(
+    manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
+    print(f"manifest_path={manifest_path}")
     print(json.dumps(manifest, sort_keys=True))
     return 0 if not failures else 2
 
