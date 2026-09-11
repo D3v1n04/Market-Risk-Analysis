@@ -126,7 +126,7 @@ def build_daily_price_rows(
             "adjusted_close_price": adjusted_close,
             "volume": volume,
             "quote_currency": instrument.quote_currency,
-            "source_updated_at_utc": timestamp,
+            "source_updated_at_utc": "",
             "source_record_id": source_record_id,
             "record_hash": "",
         }
@@ -189,7 +189,7 @@ def build_corporate_action_rows(
             "dividend_currency": currency,
             "split_ratio": ratio,
             "source_action_id": "",
-            "source_updated_at_utc": timestamp,
+            "source_updated_at_utc": "",
             "source_record_id": source_record_id,
             "record_hash": "",
         }
