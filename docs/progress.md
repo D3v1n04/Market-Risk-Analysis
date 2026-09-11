@@ -2,11 +2,11 @@
 
 ## Current position
 
-- **Current phase:** Phase 10 — Market Risk Dashboard
-- **Commit:** `cc5123a` — `feat: add market risk Power BI dashboard`
+- **Current phase:** Phase 11 — Automation, Deployment, and CI
+- **Commit:** `d848fef` — `feat: validate serving outputs in market risk workflow`
 - **Status:** Complete
-- **Next phase:** Phase 11 — Automation, Deployment, and CI
-- **Last updated:** 2026-09-10
+- **Next phase:** Phase 12 — End-to-End Validation and Portfolio Handoff
+- **Last updated:** 2026-09-11
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
 Databricks baselines were verified: two Bronze tables, four Silver tables, two
@@ -54,6 +54,14 @@ confidence, and scenario interactions were manually validated; the PBIP saved an
 reopened successfully. The Phase 10 implementation record and handoff capture the
 visual design, validation results, and remaining Phase 11 boundary.
 
+Phase 11 added credential-free GitHub Actions CI, two manual development-only
+Databricks jobs, effective Bronze batch-ID task values, and a read-only
+serving-output validation task. The bundle deployed successfully to the learner-owned
+development workspace. Initialization and Daily Risk both ran successfully; an
+intentional Daily Risk rerun preserved immutable audit history while Bronze/Silver
+recognized unchanged inputs and the serving layer continued to select exactly one
+complete published risk run.
+
 ## Status definitions
 
 | Status | Meaning |
@@ -79,7 +87,7 @@ visual design, validation results, and remaining Phase 11 boundary.
 | 08 | SQL Serving and Databricks QA | Complete | `2ca5212` — serving views and QA |
 | 09 | Power BI Semantic Model | Complete | `d9061b0` — Power BI semantic model |
 | 10 | Market Risk Dashboard | Complete | `cc5123a` — market risk Power BI dashboard |
-| 11 | Automation, Deployment, and CI | Not started | — |
+| 11 | Automation, Deployment, and CI | Complete | `d848fef` — serving validation workflow |
 | 12 | End-to-End Validation and Portfolio Handoff | Not started | — |
 
 ## Confirmed decisions
@@ -261,6 +269,7 @@ Completed phase handoffs belong in `docs/handoffs/` and use
 - `docs/handoffs/phase-08-handoff.md` — Phase 08 serving views, Databricks SQL
   QA, rerun-selection control, and Phase 09 readiness
 - `docs/handoffs/phase-10-handoff.md` — Phase 10 dashboard design, interaction validation, PBIP source hygiene, and Phase 11 readiness
+- `docs/handoffs/phase-11-handoff.md` — Phase 11 CI, deployment, runtime, rerun, and serving-validation evidence.
 
 ## New-chat kickoff prompt
 

@@ -6,25 +6,23 @@ risk analytics.
 
 ## Current milestone
 
-Phases 01 through 07 are complete.
+Phases 01 through 11 are complete.
 
-Phase 06 enabled governed deterministic instruments, target allocations, daily
-prices, corporate actions, a trading calendar, daily positions, and daily cash
-balances. Gold now publishes 120 instrument market-value rows and 8 portfolio-daily
-metric rows for two USD portfolios across `2016-01-04` through `2016-01-07`.
+Phase 11 added credential-free GitHub Actions CI, development-only Databricks bundle
+jobs, explicit workflow dependencies, safe Bronze batch-ID handoffs, and read-only
+serving-output validation. The reviewed bundle is deployed to the learner-owned
+development workspace; Initialization and Daily Risk have both completed successful
+manual runs and a successful Daily Risk rerun.
 
-Market values, exposures, NAV, P&L, and returns passed runtime validation and
-independent reconciliation. Dividend signs, stock-split invariance, and unchanged
-reruns reconcile; identical reruns retain immutable audit attempts without
-republishing unchanged canonical rows. The learner passed the explain-back.
+Identical Bronze sources create auditable `SKIPPED_DUPLICATE` attempts without
+duplicating business rows. Silver records successful unchanged processing without
+republishing an identical canonical snapshot. Immutable risk attempts remain
+auditable, while the serving views expose exactly one complete selected risk run per
+portfolio and as-of date to prevent double counting.
 
-Phase 07 adds one-day historical VaR and deterministic hypothetical stress measures
-over the approved 2016 fixture: 252 trading sessions, 251 returns, and 15
-instruments. CORE_15_LONG and LONG_SHORT_130_30 completed successful published live
-runs; independent contribution and stress reconciliation passed with exact Decimal
-precision alignment. The validated Phase 07 checkpoint is `87e1f23`. The latest
-local gate passed Ruff, 230 pytest tests, and `market-risk-check` 11/11. Live
-market-data retrieval remains outside the completed scope.
+Current intentional boundaries: development only, manual deployment and job runs,
+no schedule, no production target, no unattended credentials, and no Power BI
+automation.
 
 ## Quick start
 
@@ -60,12 +58,15 @@ Useful commands:
 
 ```text
 .
+├── .github/workflows/             # Credential-free GitHub Actions CI
 ├── contracts/                    # Machine-readable data contracts
 ├── data/                         # Tracked fixtures and ignored generated data
 ├── docs/                         # Learning guides, decisions, and handoffs
 ├── notebooks/bronze/             # Git-backed Databricks Bronze ingestion
 ├── notebooks/silver/             # Git-backed Databricks Silver processing
 ├── notebooks/gold/               # Audited Gold market values and daily metrics
+├── notebooks/qa/                  # Read-only serving-output validation
+├── resources/                     # Databricks bundle job definitions
 ├── sql/bronze/                   # Bronze object definitions and verification
 ├── sql/silver/                   # Silver object definitions
 ├── sql/gold/                     # Gold object definitions
@@ -105,13 +106,17 @@ left the canonical SHA-256 fingerprint unchanged.
   dependencies, metric conventions, and completion evidence.
 - [Phase handoff template](docs/phase-handoff-template.md) defines the handoff
   structure.
+- [Phase 10 handoff](docs/handoffs/phase-10-handoff.md) records the completed
+  dashboard implementation and validation.
+- [Phase 11 handoff](docs/handoffs/phase-11-handoff.md) records CI, deployment,
+  manual job-run, rerun-safety, and serving-validation evidence.
 
 ## Current phase boundary
 
-The next phase is Phase 08 — SQL Serving and DBeaver QA.
-Gold may consume governed Silver and previously published Gold when dependencies
-and lineage are explicit. Gold never reads Bronze directly.
+Phase 11 is complete. The next phase is Phase 12 — End-to-End Validation and
+Portfolio Handoff.
 
-The completed Phase 07 risk measures use deterministic synthetic 2016 data only.
-Forecasts, Monte Carlo or parametric VaR, expected shortfall, formal backtesting,
-and live 2016–2026 history remain outside the completed scope.
+Future work must begin with a fresh Git, CI, bundle, deployed-resource, and serving
+inventory. Scheduling, production deployment, Power BI Service publishing, automated
+refresh, and live-data retrieval remain separate decisions requiring explicit scope
+and approval.
