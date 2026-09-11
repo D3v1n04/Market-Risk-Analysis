@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import csv
+import json
 import hashlib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -266,3 +268,103 @@ def _utc_timestamp(value: datetime) -> str:
 def _record_hash(row: Mapping[str, str], fields: Sequence[str]) -> str:
     canonical = "|".join(row[field] or NULL_TOKEN for field in fields)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def fetch_yfinance_rows(
+    *,
+    instrument: InstrumentMapping,
+    start_date: str,
+    end_date_exclusive: str,
+    history_fetcher: object | None = None,
+) -> list[dict[str, object]]:
+    """Fetch one provider ticker; dependency injection keeps tests network-free."""
+    if history_fetcher is None:
+        import yfinance
+
+        def history_fetcher(symbol: str) -> object:
+            return yfinance.Ticker(symbol).history(
+                start=start_date,
+                end=end_date_exclusive,
+                interval="1d",
+                auto_adjust=False,
+                actions=True,
+            )
+    frame = history_fetcher(instrument.provider_symbol)
+    if getattr(frame, "empty", False):
+        return []
+    return list(frame.reset_index().to_dict(orient="records"))
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Extract approved Yahoo Finance history into private raw files."
+    )
+    parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("data/raw/yahoo_finance"),
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    project_root = args.project_root.resolve()
+    output_root = (project_root / args.output_root).resolve()
+    mappings = load_active_instrument_mappings(
+        project_root / "data/fixtures/instruments.csv"
+    )
+    retrieved_at_utc = datetime.now(UTC)
+    price_rows: list[dict[str, str]] = []
+    action_rows: list[dict[str, str]] = []
+    failures: list[str] = []
+    for instrument in mappings:
+        try:
+            provider_rows = fetch_yfinance_rows(
+                instrument=instrument,
+                start_date="2020-01-01",
+                end_date_exclusive="2026-01-01",
+            )
+            price_rows.extend(
+                build_daily_price_rows(
+                    instrument=instrument,
+                    provider_rows=provider_rows,
+                    retrieved_at_utc=retrieved_at_utc,
+                )
+            )
+            action_rows.extend(
+                build_corporate_action_rows(
+                    instrument=instrument,
+                    provider_rows=provider_rows,
+                    retrieved_at_utc=retrieved_at_utc,
+                )
+            )
+        except Exception as exc:
+            failures.append(f"{instrument.instrument_id}: {type(exc).__name__}")
+    price_path = output_root / "daily_prices.csv"
+    action_path = output_root / "corporate_actions.csv"
+    price_sha256 = write_csv(price_path, fieldnames=DAILY_PRICE_FIELDS, rows=price_rows)
+    action_sha256 = write_csv(
+        action_path, fieldnames=CORPORATE_ACTION_FIELDS, rows=action_rows
+    )
+    manifest = {
+        "source_id": SOURCE_ID,
+        "client_version": "1.7.0",
+        "request": {"start_date": "2020-01-01", "end_date_exclusive": "2026-01-01", "interval": "1d"},
+        "retrieved_at_utc": _utc_timestamp(retrieved_at_utc),
+        "instrument_count": len(mappings),
+        "daily_prices": {"path": price_path.name, "record_count": len(price_rows), "sha256": price_sha256},
+        "corporate_actions": {"path": action_path.name, "record_count": len(action_rows), "sha256": action_sha256},
+        "failures": failures,
+        "status": "PARTIAL" if failures else "SUCCEEDED",
+    }
+    (output_root / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    print(json.dumps(manifest, sort_keys=True))
+    return 0 if not failures else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
