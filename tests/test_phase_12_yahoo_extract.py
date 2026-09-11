@@ -107,7 +107,7 @@ def test_injected_downloader_receives_provider_ticker() -> None:
     class FakeFrame:
         empty = False
 
-        def reset_index(self) -> "FakeFrame":
+        def reset_index(self) -> FakeFrame:
             return self
 
         def to_dict(self, *, orient: str) -> list[dict[str, object]]:
