@@ -50,8 +50,23 @@ def test_provider_price_rows_become_contract_shaped_records() -> None:
     )
     assert rows[0]["source_id"] == SOURCE_ID
     assert rows[0]["price_date"] == "2020-01-02"
-    assert rows[0]["source_updated_at_utc"] == "2026-09-11T05:00:00Z"
+    assert rows[0]["source_updated_at_utc"] == ""
     assert rows[0]["record_hash"]
+    assert rows == build_daily_price_rows(
+        instrument=NVDA,
+        retrieved_at_utc=datetime(2026, 9, 11, 6, 0, tzinfo=UTC),
+        provider_rows=[
+            {
+                "Date": "2020-01-02",
+                "Open": "100",
+                "High": "102",
+                "Low": "99",
+                "Close": "101",
+                "Adj Close": "100.5",
+                "Volume": 123,
+            }
+        ],
+    )
     assert (
         rows[0]["source_record_id"] == "YAHOO_FINANCE:DAILY_PRICES:NVDA_US:2020-01-02"
     )
