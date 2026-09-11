@@ -19,3 +19,14 @@ resources:
             base_parameters:
               daily_prices_sha256: "{{job.parameters.daily_prices_sha256}}"
               corporate_actions_sha256: "{{job.parameters.corporate_actions_sha256}}"
+
+        - task_key: ingest_yahoo_market_data
+          depends_on:
+            - task_key: validate_yahoo_landing
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/bronze/phase_12_ingest_yahoo_market_data.py
+            base_parameters:
+              daily_prices_sha256: "{{job.parameters.daily_prices_sha256}}"
+              corporate_actions_sha256: "{{job.parameters.corporate_actions_sha256}}"
