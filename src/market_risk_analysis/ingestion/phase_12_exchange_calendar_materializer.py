@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
+import csv
 import hashlib
+import json
+from pathlib import Path
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -103,3 +107,50 @@ def build_exchange_calendar_rows(
         rows.append(row)
         current_date += timedelta(days=1)
     return rows
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Materialize the pinned 2020-2025 US exchange calendar."
+    )
+    parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    args = parser.parse_args(argv)
+    project_root = args.project_root.resolve()
+    generated_at_utc = datetime.now(UTC)
+    rows = [
+        row
+        for exchange_mic in EXCHANGE_MIC_CODES
+        for row in build_exchange_calendar_rows(
+            exchange_mic=exchange_mic,
+            start_date=date(2020, 1, 1),
+            end_date=date(2025, 12, 31),
+            generated_at_utc=generated_at_utc,
+        )
+    ]
+    output_root = project_root / "data/raw/exchange_calendars"
+    output_root.mkdir(parents=True, exist_ok=True)
+    csv_path = output_root / "us_equities_2020_2025.csv"
+    with csv_path.open("w", newline="", encoding="utf-8") as output_file:
+        writer = csv.DictWriter(output_file, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    source_sha256 = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+    manifest = {
+        "source_id": "EXCHANGE_CALENDARS",
+        "calendar_version": CALENDAR_CLIENT_VERSION,
+        "record_count": len(rows),
+        "source_sha256": source_sha256,
+        "path": csv_path.name,
+        "generated_at_utc": _utc_timestamp(generated_at_utc),
+    }
+    manifest_path = output_root / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(manifest, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
