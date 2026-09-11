@@ -10,6 +10,7 @@ from market_risk_analysis.ingestion.phase_12_yahoo_extract import (
     InstrumentMapping,
     build_corporate_action_rows,
     build_daily_price_rows,
+    fetch_yfinance_rows,
     load_active_instrument_mappings,
 )
 
@@ -98,3 +99,46 @@ def test_dividend_and_split_rows_follow_conditional_contract() -> None:
     assert rows[0]["split_ratio"] == ""
     assert rows[1]["split_ratio"] == "4.0000000000"
     assert rows[1]["dividend_amount_per_share"] == ""
+
+
+def test_injected_downloader_receives_provider_ticker() -> None:
+    requested_symbols: list[str] = []
+
+    class FakeFrame:
+        empty = False
+
+        def reset_index(self) -> "FakeFrame":
+            return self
+
+        def to_dict(self, *, orient: str) -> list[dict[str, object]]:
+            assert orient == "records"
+            return [{"Date": "2020-01-02", "Close": 101}]
+
+    def fetch(symbol: str) -> FakeFrame:
+        requested_symbols.append(symbol)
+        return FakeFrame()
+
+    rows = fetch_yfinance_rows(
+        instrument=NVDA,
+        start_date="2020-01-01",
+        end_date_exclusive="2026-01-01",
+        history_fetcher=fetch,
+    )
+
+    assert requested_symbols == ["NVDA"]
+    assert rows == [{"Date": "2020-01-02", "Close": 101}]
+
+
+def test_empty_injected_downloader_response_is_visible() -> None:
+    class EmptyFrame:
+        empty = True
+
+    assert (
+        fetch_yfinance_rows(
+            instrument=NVDA,
+            start_date="2020-01-01",
+            end_date_exclusive="2026-01-01",
+            history_fetcher=lambda _symbol: EmptyFrame(),
+        )
+        == []
+    )
