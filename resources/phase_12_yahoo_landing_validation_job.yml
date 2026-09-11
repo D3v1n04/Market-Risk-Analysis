@@ -1,0 +1,21 @@
+resources:
+  jobs:
+    yahoo_finance_landing_validation:
+      name: Yahoo Finance Landing Validation
+      max_concurrent_runs: 1
+
+      parameters:
+        - name: daily_prices_sha256
+          default: "7f860c0a3d8191b9b2840e5c0d784954b8b9102af51d76b24828a5c0118d7c27"
+        - name: corporate_actions_sha256
+          default: "e6cc097f3cfe44ef325e968cf9b9c0d4869476d946fd67720854cb89d7315a83"
+
+      tasks:
+        - task_key: validate_yahoo_landing
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/bronze/phase_12_validate_yahoo_landing.py
+            base_parameters:
+              daily_prices_sha256: "{{job.parameters.daily_prices_sha256}}"
+              corporate_actions_sha256: "{{job.parameters.corporate_actions_sha256}}"
