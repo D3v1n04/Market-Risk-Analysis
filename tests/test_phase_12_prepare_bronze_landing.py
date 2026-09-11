@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from market_risk_analysis.ingestion.phase_12_prepare_bronze_landing import (
+    main,
     prepare_bronze_landing,
 )
 
@@ -82,3 +83,28 @@ def test_partial_attempt_cannot_be_prepared_for_publication(tmp_path: Path) -> N
             attempt_manifest_path=attempt_path,
             landing_root=tmp_path / "landing",
         )
+
+
+def test_command_requires_an_explicit_successful_attempt(
+    tmp_path: Path,
+) -> None:
+    raw_root = tmp_path / "data" / "raw" / "yahoo_finance"
+    attempt_path = _write_complete_attempt(raw_root)
+
+    exit_code = main(
+        [
+            "--project-root",
+            str(tmp_path),
+            "--attempt-manifest",
+            str(attempt_path.relative_to(raw_root)),
+        ]
+    )
+
+    assert exit_code == 0
+    assert (
+        tmp_path
+        / "data"
+        / "bronze_landing"
+        / "yahoo_finance"
+        / "daily_prices"
+    ).exists()
