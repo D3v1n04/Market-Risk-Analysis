@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import json
@@ -86,3 +87,53 @@ def prepare_bronze_landing(
             **manifest,
         }
     return prepared
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Prepare one complete Yahoo snapshot for Bronze landing."
+    )
+    parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    parser.add_argument(
+        "--attempt-manifest",
+        type=Path,
+        required=True,
+        help="Path relative to the Yahoo raw root for one extraction manifest.",
+    )
+    parser.add_argument(
+        "--landing-root",
+        type=Path,
+        default=Path("data/bronze_landing/yahoo_finance"),
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    project_root = args.project_root.resolve()
+    raw_root = project_root / "data/raw/yahoo_finance"
+    attempt_manifest_path = raw_root / args.attempt_manifest
+    prepared = prepare_bronze_landing(
+        raw_root=raw_root,
+        attempt_manifest_path=attempt_manifest_path,
+        landing_root=(project_root / args.landing_root).resolve(),
+    )
+    print(
+        json.dumps(
+            {
+                name: {
+                    **values,
+                    "data_path": str(values["data_path"]),
+                    "manifest_path": str(values["manifest_path"]),
+                }
+                for name, values in prepared.items()
+            },
+            default=str,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
