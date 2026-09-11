@@ -15,16 +15,35 @@ ACTION_SCALE = Decimal("0.00000001")
 SPLIT_SCALE = Decimal("0.0000000000")
 
 DAILY_PRICE_FIELDS = (
-    "instrument_id", "price_date", "source_id", "source_symbol", "open_price",
-    "high_price", "low_price", "close_price", "adjusted_close_price", "volume",
-    "quote_currency", "source_updated_at_utc", "source_record_id", "record_hash",
+    "instrument_id",
+    "price_date",
+    "source_id",
+    "source_symbol",
+    "open_price",
+    "high_price",
+    "low_price",
+    "close_price",
+    "adjusted_close_price",
+    "volume",
+    "quote_currency",
+    "source_updated_at_utc",
+    "source_record_id",
+    "record_hash",
 )
 DAILY_PRICE_HASH_FIELDS = DAILY_PRICE_FIELDS[:11]
 CORPORATE_ACTION_FIELDS = (
-    "instrument_id", "effective_date", "action_type", "source_id",
-    "source_symbol", "dividend_amount_per_share", "dividend_currency",
-    "split_ratio", "source_action_id", "source_updated_at_utc",
-    "source_record_id", "record_hash",
+    "instrument_id",
+    "effective_date",
+    "action_type",
+    "source_id",
+    "source_symbol",
+    "dividend_amount_per_share",
+    "dividend_currency",
+    "split_ratio",
+    "source_action_id",
+    "source_updated_at_utc",
+    "source_record_id",
+    "record_hash",
 )
 CORPORATE_ACTION_HASH_FIELDS = CORPORATE_ACTION_FIELDS[:9]
 
@@ -73,12 +92,26 @@ def build_daily_price_rows(
         high_price = _decimal(observation.get("High"), "High", PRICE_SCALE)
         low_price = _decimal(observation.get("Low"), "Low", PRICE_SCALE)
         close_price = _decimal(observation.get("Close"), "Close", PRICE_SCALE)
-        adjusted_close = _decimal(observation.get("Adj Close"), "Adj Close", PRICE_SCALE)
-        if Decimal(high_price) < max(Decimal(open_price), Decimal(low_price), Decimal(close_price)):
-            raise ValueError(f"OHLC high is inconsistent for {instrument.instrument_id} {price_date}")
-        if Decimal(low_price) > min(Decimal(open_price), Decimal(high_price), Decimal(close_price)):
-            raise ValueError(f"OHLC low is inconsistent for {instrument.instrument_id} {price_date}")
+        adjusted_close = _decimal(
+            observation.get("Adj Close"), "Adj Close", PRICE_SCALE
+        )
+        if Decimal(high_price) < max(
+            Decimal(open_price), Decimal(low_price), Decimal(close_price)
+        ):
+            raise ValueError(
+                f"OHLC high is inconsistent for {instrument.instrument_id} {price_date}"
+            )
+        if Decimal(low_price) > min(
+            Decimal(open_price), Decimal(high_price), Decimal(close_price)
+        ):
+            raise ValueError(
+                f"OHLC low is inconsistent for {instrument.instrument_id} {price_date}"
+            )
         volume = _volume(observation.get("Volume"))
+        source_record_id = (
+            f"{SOURCE_ID}:DAILY_PRICES:{instrument.instrument_id}:"
+            f"{price_date}"
+        )
         row = {
             "instrument_id": instrument.instrument_id,
             "price_date": price_date,
@@ -92,7 +125,7 @@ def build_daily_price_rows(
             "volume": volume,
             "quote_currency": instrument.quote_currency,
             "source_updated_at_utc": timestamp,
-            "source_record_id": f"{SOURCE_ID}:DAILY_PRICES:{instrument.instrument_id}:{price_date}",
+            "source_record_id": source_record_id,
             "record_hash": "",
         }
         row["record_hash"] = _record_hash(row, DAILY_PRICE_HASH_FIELDS)
@@ -110,18 +143,40 @@ def build_corporate_action_rows(
     rows: list[dict[str, str]] = []
     for event in provider_rows:
         effective_date = _iso_date(event.get("Date"), "Date")
-        dividend = _nonnegative_decimal(event.get("Dividends"), "Dividends", ACTION_SCALE)
-        split = _nonnegative_decimal(event.get("Stock Splits"), "Stock Splits", SPLIT_SCALE)
+        dividend = _nonnegative_decimal(
+            event.get("Dividends"), "Dividends", ACTION_SCALE
+        )
+        split = _nonnegative_decimal(
+            event.get("Stock Splits"), "Stock Splits", SPLIT_SCALE
+        )
         if dividend > Decimal() and split > Decimal():
-            raise ValueError(f"Provider event has dividend and split values for {instrument.instrument_id} {effective_date}")
+            message = (
+                "Provider event has dividend and split values for "
+                f"{instrument.instrument_id} {effective_date}"
+            )
+            raise ValueError(message)
         if dividend == Decimal() and split in {Decimal(), Decimal("1")}:
             continue
         if dividend > Decimal():
-            action_type, amount, currency, ratio = "CASH_DIVIDEND", _format(dividend, ACTION_SCALE), instrument.quote_currency, ""
+            action_type, amount, currency, ratio = (
+                "CASH_DIVIDEND",
+                _format(dividend, ACTION_SCALE),
+                instrument.quote_currency,
+                "",
+            )
         else:
             if split == Decimal("1"):
                 continue
-            action_type, amount, currency, ratio = "STOCK_SPLIT", "", "", _format(split, SPLIT_SCALE)
+            action_type, amount, currency, ratio = (
+                "STOCK_SPLIT",
+                "",
+                "",
+                _format(split, SPLIT_SCALE),
+            )
+        source_record_id = (
+            f"{SOURCE_ID}:CORPORATE_ACTIONS:{instrument.instrument_id}:"
+            f"{effective_date}:{action_type}"
+        )
         row = {
             "instrument_id": instrument.instrument_id,
             "effective_date": effective_date,
@@ -133,7 +188,7 @@ def build_corporate_action_rows(
             "split_ratio": ratio,
             "source_action_id": "",
             "source_updated_at_utc": timestamp,
-            "source_record_id": f"{SOURCE_ID}:CORPORATE_ACTIONS:{instrument.instrument_id}:{effective_date}:{action_type}",
+            "source_record_id": source_record_id,
             "record_hash": "",
         }
         row["record_hash"] = _record_hash(row, CORPORATE_ACTION_HASH_FIELDS)
@@ -141,7 +196,9 @@ def build_corporate_action_rows(
     return rows
 
 
-def write_csv(path: Path, *, fieldnames: Sequence[str], rows: Sequence[Mapping[str, str]]) -> str:
+def write_csv(
+    path: Path, *, fieldnames: Sequence[str], rows: Sequence[Mapping[str, str]]
+) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as output_file:
         writer = csv.DictWriter(output_file, fieldnames=fieldnames, lineterminator="\n")
@@ -201,7 +258,9 @@ def _format(value: Decimal, scale: Decimal) -> str:
 def _utc_timestamp(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("retrieved_at_utc must be timezone-aware")
-    return value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _record_hash(row: Mapping[str, str], fields: Sequence[str]) -> str:
