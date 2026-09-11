@@ -76,7 +76,8 @@ session, and asking questions never counts as falling behind.
 | Data product | 03–05 | Contracted, ingested, and validated lakehouse data |
 | Risk engine | 06–07 | Reconciled analytics and explainable risk measures |
 | Consumption | 08–10 | Governed SQL access and a validated Power BI experience |
-| Operation | 11–12 | Automated, documented, end-to-end demonstrable system |
+| Operation | 11 | Credential-free CI and manually operated development workflows |
+| Real-data rebuild | 12–14 | Governed real history, rebuilt analytics, and refreshed consumer handoff |
 
 ## Phase summary
 
@@ -92,8 +93,10 @@ session, and asking questions never counts as falling behind.
 | 08 | SQL Serving and Databricks QA | SQL warehouse, Databricks SQL | Stable Gold views and a repeatable read-only SQL reconciliation pack are available |
 | 09 | Power BI Semantic Model | Power BI, DAX, Databricks connector | A validated star model and core measures match Databricks results |
 | 10 | Market Risk Dashboard | Power BI | An understandable, interactive dashboard answers defined risk questions |
-| 11 | Automation, Deployment, and CI | Databricks Workflows, bundles, GitHub | Repeatable deployments, scheduled execution, and automated gates work safely |
-| 12 | End-to-End Validation and Portfolio Handoff | All tools | The complete run is evidenced, documented, reproducible, and presentation-ready |
+| 11 | Automation, Deployment, and CI | Databricks Workflows, bundles, GitHub | Credential-free CI and manual development workflows are safely repeatable |
+| 12 | Real Historical Data Foundation | Python, yfinance, Databricks, Delta Lake | Real 2020–2025 prices and corporate actions are source-preserved, quality-controlled, and canonical in Silver |
+| 13 | Real Portfolio Analytics and Risk Rebuild | Python, SQL, Databricks | Positions, Gold analytics, VaR, and stress results are rebuilt and reconciled from the approved real Silver source |
+| 14 | Real Serving, Power BI, and Final Handoff | Databricks SQL, Power BI Desktop, documentation | Serving views and the manual dashboard refresh use real outputs; evidence and limitations are presentation-ready |
 
 ## Detailed phase plans
 

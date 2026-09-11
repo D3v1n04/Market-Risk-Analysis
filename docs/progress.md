@@ -2,10 +2,10 @@
 
 ## Current position
 
-- **Current phase:** Phase 11 — Automation, Deployment, and CI
-- **Commit:** `d848fef` — `feat: validate serving outputs in market risk workflow`
-- **Status:** Complete
-- **Next phase:** Phase 12 — End-to-End Validation and Portfolio Handoff
+- **Current phase:** Phase 12 — Real Historical Data Foundation
+- **Baseline commit:** `3b83421` — `docs: finalize Phase 11 automation handoff`
+- **Status:** In progress
+- **Next phase:** Phase 13 — Real Portfolio Analytics and Risk Rebuild
 - **Last updated:** 2026-09-11
 
 Phase 06 started from the completed Phase 05 checkpoint at `944fc12`. The Git and
@@ -62,6 +62,12 @@ intentional Daily Risk rerun preserved immutable audit history while Bronze/Silv
 recognized unchanged inputs and the serving layer continued to select exactly one
 complete published risk run.
 
+Phase 12 is now in progress. It introduces a separate real historical source for
+2020–2025 while retaining the synthetic 2016 data as the permanent regression and
+audit baseline. The phase is limited to real-data extraction, provenance, Bronze,
+and Silver; rebuilding analytics and dashboard consumption is deferred to Phases 13
+and 14.
+
 ## Status definitions
 
 | Status | Meaning |
@@ -88,7 +94,9 @@ complete published risk run.
 | 09 | Power BI Semantic Model | Complete | `d9061b0` — Power BI semantic model |
 | 10 | Market Risk Dashboard | Complete | `cc5123a` — market risk Power BI dashboard |
 | 11 | Automation, Deployment, and CI | Complete | `d848fef` — serving validation workflow |
-| 12 | End-to-End Validation and Portfolio Handoff | Not started | — |
+| 12 | Real Historical Data Foundation | In progress | `3b83421` — Phase 11 baseline |
+| 13 | Real Portfolio Analytics and Risk Rebuild | Not started | — |
+| 14 | Real Serving, Power BI, and Final Handoff | Not started | — |
 
 ## Confirmed decisions
 
@@ -123,6 +131,9 @@ complete published risk run.
 | Define risk questions before implementation | Keeps metrics tied to explicit analytical needs |
 | Use 15 US-listed instruments and two portfolios | Provides useful diversification and long-short behavior while remaining explainable |
 | Use deterministic synthetic fixtures first | Makes tests reproducible and avoids licensed-data ambiguity |
+| Preserve the synthetic 2016 baseline | It remains the controlled regression, failure, calculation, and audit source; it is never silently mixed with real data |
+| Use 2020–2025 real Yahoo Finance observations in Phases 12–14 | Six complete calendar years provide meaningful historical coverage at a manageable educational scale |
+| Extract real market data locally in Ubuntu/WSL | Local retrieval gives explicit control of retries, source files, manifests, and provider access before governed Databricks landing |
 | Preserve immutable Bronze evidence | Supports audit, correction history, and safe reprocessing |
 | Treat warnings separately from row outcomes | Prevents warning violations from double-counting received records |
 | Use exchange-aware trading calendars | Distinguishes expected closures from missing-price failures |
