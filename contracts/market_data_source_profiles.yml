@@ -1,0 +1,167 @@
+contract_version: 1.0.0
+dataset: market_data_source_profiles
+dataset_class: source_configuration
+description: >-
+  Approved provider profile for real historical market observations used by the
+  Market Risk Analysis educational portfolio project.
+grain: One record represents one reviewed provider configuration for one retrieval policy.
+
+primary_key:
+  - provider_id
+
+fields:
+  - name: provider_id
+    type: STRING
+    nullable: false
+    allowed_values: [YAHOO_FINANCE]
+  - name: provider_name
+    type: STRING
+    nullable: false
+  - name: client_library
+    type: STRING
+    nullable: false
+  - name: client_version
+    type: STRING
+    nullable: false
+    pinned: true
+  - name: request_start_date
+    type: DATE
+    nullable: false
+  - name: request_end_date_exclusive
+    type: DATE
+    nullable: false
+  - name: interval
+    type: STRING
+    nullable: false
+    allowed_values: [1d]
+  - name: instrument_mapping_path
+    type: STRING
+    nullable: false
+  - name: provider_symbol_field
+    type: STRING
+    nullable: false
+  - name: quote_currency
+    type: STRING
+    nullable: false
+    allowed_values: [USD]
+  - name: business_timezone
+    type: STRING
+    nullable: false
+  - name: storage_timestamp_timezone
+    type: STRING
+    nullable: false
+  - name: extraction_machine
+    type: STRING
+    nullable: false
+  - name: full_snapshot_git_policy
+    type: STRING
+    nullable: false
+    allowed_values: [IGNORED_PRIVATE]
+  - name: price_coverage_policy
+    type: STRING
+    nullable: false
+    allowed_values: [ALL_ACTIVE_INSTRUMENTS_X_VALIDATED_COMMON_SESSIONS]
+  - name: corporate_action_zero_rows_allowed
+    type: BOOLEAN
+    nullable: false
+
+approved_profile:
+  provider_id: YAHOO_FINANCE
+  provider_name: Yahoo Finance publicly accessible market-data interface
+  client:
+    library: yfinance
+    version: 1.7.0
+    dependency_specifier: yfinance==1.7.0
+  purpose: >-
+    Primary real historical source for the approved 15-instrument portfolio
+    analysis after Phase 12 Silver validation.
+  request:
+    start_date: 2020-01-01
+    end_date_exclusive: 2026-01-01
+    interval: 1d
+    per_instrument: true
+    daily_price_fields:
+      - Open
+      - High
+      - Low
+      - Close
+      - Adj Close
+      - Volume
+    corporate_action_fields:
+      - Dividends
+      - Stock Splits
+  instrument_mapping:
+    path: data/fixtures/instruments.csv
+    internal_identifier_field: instrument_id
+    display_symbol_field: display_symbol
+    provider_symbol_field: yfinance_symbol
+    preserve_internal_identifier: true
+  currency_and_time:
+    quote_currency: USD
+    business_timezone: America/New_York
+    storage_timestamp_timezone: UTC
+  execution:
+    machine: Ubuntu 24.04 on WSL 2
+    authoring_environment: VS Code WSL Remote
+    provider_access_location: local_extractor_only
+  storage:
+    local_raw_root: data/raw/yahoo_finance
+    full_snapshot_git_policy: IGNORED_PRIVATE
+    governed_landing_target: private Unity Catalog Volume
+    git_evidence:
+      - extraction code
+      - source manifests
+      - SHA-256 hashes
+      - row-count and schema summaries
+      - data-quality evidence
+      - small structural test fixtures
+  coverage:
+    price_policy: ALL_ACTIVE_INSTRUMENTS_X_VALIDATED_COMMON_SESSIONS
+    derive_expected_count_from: validated_returned_common_session_grid
+    partial_batch_behavior: >-
+      Preserve usable delivered records, mark incomplete required coverage PARTIAL,
+      and block complete downstream publication for the affected date.
+    forward_fill_missing_price: false
+    corporate_action_zero_rows_allowed: true
+    corporate_action_zero_rows_meaning: >-
+      A successful event request can contain no events; a failed or unverifiable
+      request is not evidence of zero events.
+  source_limitations:
+    - yfinance is an unofficial open-source client.
+    - The source is not a direct exchange feed or official Yahoo Finance API.
+    - The source has no institutional completeness guarantee, contractual reliability, or SLA.
+    - Provider corrections remain eligible for governed later-batch correction handling.
+  exclusions:
+    - No automatic public redistribution of full provider-derived snapshots.
+    - No production, unattended, or scheduled extraction in Phase 12.
+    - No direct provider retrieval from Databricks is required.
+
+quality_rules:
+  - rule_id: SOURCE_PROFILE_CLIENT_PINNED
+    severity: ERROR
+    disposition: BLOCK_EXTRACTION
+    assertion: The client dependency specifier is exactly pinned and matches the approved profile version.
+  - rule_id: SOURCE_PROFILE_REQUEST_WINDOW_VALID
+    severity: ERROR
+    disposition: BLOCK_EXTRACTION
+    assertion: The real-history request begins on 2020-01-01 and uses exclusive end date 2026-01-01 with one-day interval.
+  - rule_id: SOURCE_PROFILE_TICKER_MAPPING_REQUIRED
+    severity: ERROR
+    disposition: BLOCK_EXTRACTION
+    assertion: Every active internal instrument ID maps through data/fixtures/instruments.csv to one provider ticker before retrieval.
+  - rule_id: SOURCE_PROFILE_PRICE_COVERAGE_DERIVED
+    severity: ERROR
+    disposition: PARTIAL_BATCH
+    assertion: Expected price coverage is derived from the validated common-session grid, never a fixed estimated row count.
+  - rule_id: SOURCE_PROFILE_ACTION_ZERO_EVENT_ALLOWED
+    severity: INFO
+    disposition: ACCEPT
+    assertion: A completed corporate-action request may have zero events for an instrument without being treated as a missing price.
+  - rule_id: SOURCE_PROFILE_PRIVATE_SNAPSHOT_REQUIRED
+    severity: ERROR
+    disposition: BLOCK_EXTRACTION
+    assertion: Full provider-derived snapshots remain in the ignored local raw root and/or a private governed landing target.
+  - rule_id: SOURCE_PROFILE_SOURCE_LIMITATION_DISCLOSED
+    severity: WARNING
+    disposition: WARN_AND_ACCEPT
+    assertion: Documentation describes the unofficial client and absence of exchange-feed, SLA, and institutional guarantees.

@@ -23,6 +23,7 @@ EXPECTED_CONTRACT_VERSIONS = {
     "derivation_runs": "1.0.0",
     "ingestion_batches": "2.0.0",
     "instruments": "1.1.0",
+    "market_data_source_profiles": "1.0.0",
     "historical_pnl_scenarios": "1.0.0",
     "portfolios": "1.1.0",
     "portfolio_daily_metrics": "1.0.0",
@@ -107,6 +108,41 @@ def test_expected_contracts_are_parseable_and_self_describing() -> None:
         assert rule_ids
         assert len(rule_ids) == len(set(rule_ids))
 
+
+
+def test_real_market_data_source_profile_is_pinned_and_private() -> None:
+    contract = _load_contract("market_data_source_profiles")
+    profile = contract["approved_profile"]
+    fields = {field["name"]: field for field in contract["fields"]}
+    rule_ids = {rule["rule_id"] for rule in contract["quality_rules"]}
+
+    assert contract["dataset_class"] == "source_configuration"
+    assert profile["provider_id"] == "YAHOO_FINANCE"
+    assert profile["client"]["library"] == "yfinance"
+    assert profile["client"]["version"] == "1.7.0"
+    assert profile["request"]["start_date"] == "2020-01-01"
+    assert profile["request"]["end_date_exclusive"] == "2026-01-01"
+    assert profile["request"]["interval"] == "1d"
+    assert profile["instrument_mapping"]["path"] == "data/fixtures/instruments.csv"
+    assert profile["instrument_mapping"]["provider_symbol_field"] == "yfinance_symbol"
+    assert profile["execution"]["machine"] == "Ubuntu 24.04 on WSL 2"
+    assert profile["storage"]["full_snapshot_git_policy"] == "IGNORED_PRIVATE"
+    assert profile["coverage"]["price_policy"] == (
+        "ALL_ACTIVE_INSTRUMENTS_X_VALIDATED_COMMON_SESSIONS"
+    )
+    assert profile["coverage"]["corporate_action_zero_rows_allowed"] is True
+
+    assert fields["provider_id"]["allowed_values"] == ["YAHOO_FINANCE"]
+    assert fields["client_version"]["pinned"] is True
+    assert fields["request_end_date_exclusive"]["nullable"] is False
+    assert {
+        "SOURCE_PROFILE_CLIENT_PINNED",
+        "SOURCE_PROFILE_REQUEST_WINDOW_VALID",
+        "SOURCE_PROFILE_TICKER_MAPPING_REQUIRED",
+        "SOURCE_PROFILE_PRICE_COVERAGE_DERIVED",
+        "SOURCE_PROFILE_ACTION_ZERO_EVENT_ALLOWED",
+        "SOURCE_PROFILE_PRIVATE_SNAPSHOT_REQUIRED",
+    } <= rule_ids
 
 def test_ingestion_batch_contract_supports_git_fixture_reruns() -> None:
     contract = _load_contract("ingestion_batches")
