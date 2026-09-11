@@ -60,7 +60,11 @@ calendar_counts = {
     row["exchange_mic"]: row["count"]
     for row in calendar.groupBy("exchange_mic").count().collect()
 }
-require_equal("calendar sessions by exchange", calendar_counts, {"XNAS": 1508, "XNYS": 1508})
+require_equal(
+    "calendar sessions by exchange",
+    calendar_counts,
+    {"XNAS": 1508, "XNYS": 1508},
+)
 
 prices = (
     spark.table(BRONZE_DAILY_PRICE_TABLE)
