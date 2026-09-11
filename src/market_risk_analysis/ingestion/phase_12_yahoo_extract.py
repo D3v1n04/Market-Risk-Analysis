@@ -141,7 +141,7 @@ def build_corporate_action_rows(
     provider_rows: Iterable[Mapping[str, object]],
     retrieved_at_utc: datetime,
 ) -> list[dict[str, str]]:
-    timestamp = _utc_timestamp(retrieved_at_utc)
+    _utc_timestamp(retrieved_at_utc)
     rows: list[dict[str, str]] = []
     for event in provider_rows:
         effective_date = _iso_date(event.get("Date"), "Date")
