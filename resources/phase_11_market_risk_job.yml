@@ -1,0 +1,121 @@
+resources:
+  jobs:
+    market_risk_daily_risk:
+      name: Market Risk Daily Risk
+      max_concurrent_runs: 1
+
+      parameters:
+        - name: code_version
+          default: ""
+        - name: trigger_type
+          default: MANUAL
+        - name: portfolio_id
+          default: CORE_15_LONG
+        - name: valuation_date
+          default: "2016-01-07"
+        - name: risk_as_of_date
+          default: "2016-12-30"
+
+      tasks:
+        - task_key: bronze_market_ingestion
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/bronze/phase_06_ingest_market_data.py
+
+        - task_key: generate_trading_calendar
+          depends_on:
+            - task_key: bronze_market_ingestion
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_generate_trading_calendar.py
+
+        - task_key: silver_process_daily_prices
+          depends_on:
+            - task_key: generate_trading_calendar
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_process_market_data.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_market_ingestion.values.daily_prices_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: silver_process_corporate_actions
+          depends_on:
+            - task_key: silver_process_daily_prices
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_process_market_data.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_market_ingestion.values.corporate_actions_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: derive_positions
+          depends_on:
+            - task_key: silver_process_corporate_actions
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_derive_positions.py
+            base_parameters:
+              portfolio_id: "{{job.parameters.portfolio_id}}"
+              position_date: "{{job.parameters.valuation_date}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: derive_cash_balances
+          depends_on:
+            - task_key: derive_positions
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_derive_cash_balances.py
+            base_parameters:
+              portfolio_id: "{{job.parameters.portfolio_id}}"
+              cash_date: "{{job.parameters.valuation_date}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: calculate_position_market_values
+          depends_on:
+            - task_key: derive_cash_balances
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/gold/phase_06_calculate_position_market_values.py
+            base_parameters:
+              portfolio_id: "{{job.parameters.portfolio_id}}"
+              valuation_date: "{{job.parameters.valuation_date}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: calculate_portfolio_daily_metrics
+          depends_on:
+            - task_key: calculate_position_market_values
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/gold/phase_06_calculate_portfolio_daily_metrics.py
+            base_parameters:
+              portfolio_id: "{{job.parameters.portfolio_id}}"
+              valuation_date: "{{job.parameters.valuation_date}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: calculate_risk_measures
+          depends_on:
+            - task_key: calculate_portfolio_daily_metrics
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/gold/phase_07_calculate_risk_measures.py
+            base_parameters:
+              portfolio_id: "{{job.parameters.portfolio_id}}"
+              as_of_date: "{{job.parameters.risk_as_of_date}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
