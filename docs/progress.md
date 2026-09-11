@@ -4,7 +4,7 @@
 
 - **Current phase:** Phase 12 — Real Historical Data Foundation
 - **Baseline commit:** `3b83421` — `docs: finalize Phase 11 automation handoff`
-- **Status:** In progress
+- **Status:** Complete
 - **Next phase:** Phase 13 — Real Portfolio Analytics and Risk Rebuild
 - **Last updated:** 2026-09-11
 
@@ -62,11 +62,14 @@ intentional Daily Risk rerun preserved immutable audit history while Bronze/Silv
 recognized unchanged inputs and the serving layer continued to select exactly one
 complete published risk run.
 
-Phase 12 is now in progress. It introduces a separate real historical source for
-2020–2025 while retaining the synthetic 2016 data as the permanent regression and
-audit baseline. The phase is limited to real-data extraction, provenance, Bronze,
-and Silver; rebuilding analytics and dashboard consumption is deferred to Phases 13
-and 14.
+Phase 12 completed the governed real-data foundation for the approved 15-instrument
+universe. Separate private Yahoo Finance 2020–2025 snapshots were admitted through
+immutable Bronze batches and canonical Silver publication. Silver now contains 22,620
+daily-price rows across 1,508 sessions and 15 instruments, plus 280 corporate-action
+rows. The calendar, prices, and actions passed independent SQL reconciliation and an
+idempotency rerun. A shared-audit Delta concurrency incident was corrected by
+serializing publication; the historical Daily Prices evidence gap is accurately
+documented without fabricating an audit event.
 
 ## Status definitions
 
@@ -94,7 +97,7 @@ and 14.
 | 09 | Power BI Semantic Model | Complete | `d9061b0` — Power BI semantic model |
 | 10 | Market Risk Dashboard | Complete | `cc5123a` — market risk Power BI dashboard |
 | 11 | Automation, Deployment, and CI | Complete | `d848fef` — serving validation workflow |
-| 12 | Real Historical Data Foundation | In progress | `3b83421` — Phase 11 baseline |
+| 12 | Real Historical Data Foundation | Complete | `87bba9a` — daily-price audit reconciliation |
 | 13 | Real Portfolio Analytics and Risk Rebuild | Not started | — |
 | 14 | Real Serving, Power BI, and Final Handoff | Not started | — |
 
