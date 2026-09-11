@@ -8,7 +8,7 @@
 import csv
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -204,8 +204,8 @@ def build_plan(
         "trigger_type": "MANUAL",
         "retry_of_batch_id": None,
         "attempt_number": 1,
-        "requested_start_date": REQUEST_START_DATE,
-        "requested_end_date": REQUEST_END_DATE,
+        "requested_start_date": date.fromisoformat(REQUEST_START_DATE),
+        "requested_end_date": date.fromisoformat(REQUEST_END_DATE),
         "started_at_utc": started_at_utc,
         "completed_at_utc": completed_at_utc,
         "status": status,
