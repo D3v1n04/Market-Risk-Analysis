@@ -86,7 +86,7 @@ def build_daily_price_rows(
     provider_rows: Iterable[Mapping[str, object]],
     retrieved_at_utc: datetime,
 ) -> list[dict[str, str]]:
-    timestamp = _utc_timestamp(retrieved_at_utc)
+    _utc_timestamp(retrieved_at_utc)
     rows: list[dict[str, str]] = []
     for observation in provider_rows:
         price_date = _iso_date(observation.get("Date"), "Date")
@@ -326,6 +326,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 start_date="2020-01-01",
                 end_date_exclusive="2026-01-01",
             )
+            if not provider_rows:
+                failures.append(f"{instrument.instrument_id}: EMPTY_RESPONSE")
+                continue
             price_rows.extend(
                 build_daily_price_rows(
                     instrument=instrument,
@@ -360,8 +363,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     price_target.parent.mkdir(parents=True, exist_ok=True)
     action_target.parent.mkdir(parents=True, exist_ok=True)
-    price_path.replace(price_target)
-    action_path.replace(action_target)
+    if price_target.exists():
+        price_path.unlink()
+    else:
+        price_path.replace(price_target)
+    if action_target.exists():
+        action_path.unlink()
+    else:
+        action_path.replace(action_target)
     mapping_path = project_root / "data/fixtures/instruments.csv"
     mapping_sha256 = hashlib.sha256(mapping_path.read_bytes()).hexdigest()
     run_sha256 = hashlib.sha256(
