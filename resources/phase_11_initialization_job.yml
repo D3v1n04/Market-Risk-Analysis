@@ -1,0 +1,86 @@
+resources:
+  jobs:
+    market_risk_initialization:
+      name: Market Risk Initialization
+      max_concurrent_runs: 1
+
+      parameters:
+        - name: code_version
+          default: ""
+        - name: trigger_type
+          default: MANUAL
+
+      tasks:
+        - task_key: bronze_portfolio_initialization
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/bronze/phase_06_ingest_portfolio_initialization.py
+
+        - task_key: silver_process_portfolios
+          depends_on:
+            - task_key: bronze_portfolio_initialization
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_05_process_portfolios.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_portfolio_initialization.values.portfolio_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: bronze_reference_ingestion
+          depends_on:
+            - task_key: silver_process_portfolios
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/bronze/phase_06_ingest_reference_data.py
+
+        - task_key: silver_process_instruments
+          depends_on:
+            - task_key: bronze_reference_ingestion
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_process_reference_data.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_reference_ingestion.values.instruments_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: silver_process_target_allocations
+          depends_on:
+            - task_key: silver_process_instruments
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_process_reference_data.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_reference_ingestion.values.target_allocations_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: silver_process_stress_scenarios
+          depends_on:
+            - task_key: silver_process_target_allocations
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_process_reference_data.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_reference_ingestion.values.stress_scenarios_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: silver_process_stress_scenario_shocks
+          depends_on:
+            - task_key: silver_process_stress_scenarios
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/silver/phase_06_process_reference_data.py
+            base_parameters:
+              source_batch_id: "{{tasks.bronze_reference_ingestion.values.stress_scenario_shocks_batch_id}}"
+              code_version: "{{job.parameters.code_version}}"
+              trigger_type: "{{job.parameters.trigger_type}}"

@@ -5,6 +5,9 @@
 bundle:
   name: Market-Risk-Analysis
 
+include:
+  - resources/*.yml
+
 targets:
   dev:
     mode: development
