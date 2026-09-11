@@ -53,7 +53,9 @@ def prepare_bronze_landing(
         with source_path.open(newline="", encoding="utf-8") as source_file:
             record_count = sum(1 for _ in csv.DictReader(source_file))
         if record_count != source_metadata["record_count"]:
-            raise ValueError(f"{dataset_name} source record count does not match attempt")
+            raise ValueError(
+                f"{dataset_name} source record count does not match attempt"
+            )
 
         destination_dir = landing_root / dataset_name.lower() / expected_sha256
         destination_path = destination_dir / filename
