@@ -70,6 +70,7 @@ def test_yahoo_bronze_writer_is_gated_by_validation() -> None:
 
     assert source.startswith("# Databricks notebook source\n")
     assert source.splitlines()[1] == "# MAGIC %run ./phase_12_validate_yahoo_landing"
+    assert 'validated = globals().get("validated")' in source
     assert 'F.col("status").isin("SUCCEEDED", "SUCCEEDED_WITH_WARNINGS")' in source
     assert '"SKIPPED_DUPLICATE"' in source
     assert '"requested_start_date": date.fromisoformat(REQUEST_START_DATE)' in source
