@@ -61,6 +61,7 @@ def build_exchange_calendar_rows(
         end_date.isoformat(),
     )
     session_by_date = {session.date(): session for session in sessions}
+    early_sessions = set(exchange.early_closes)
     rows: list[dict[str, str]] = []
     current_date = start_date
 
@@ -90,11 +91,7 @@ def build_exchange_calendar_rows(
                 "is_trading_day": "true",
                 "market_open_utc": _utc_timestamp(open_time),
                 "market_close_utc": _utc_timestamp(close_time),
-                "is_early_close": str(
-                    close_time.time() < exchange.session_close(sessions[0])
-                    .to_pydatetime()
-                    .time()
-                ).lower(),
+                "is_early_close": str(session in early_sessions).lower(),
                 "holiday_name": "",
                 "exchange_timezone": "America/New_York",
                 "calendar_source": "exchange_calendars",
