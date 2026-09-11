@@ -45,6 +45,7 @@ def test_market_risk_workflow_is_safe_and_fully_wired() -> None:
         "calculate_position_market_values",
         "calculate_portfolio_daily_metrics",
         "calculate_risk_measures",
+        "validate_serving_outputs",
     ]
 
     assert all(task["max_retries"] == "0" for task in tasks.values())
@@ -59,6 +60,7 @@ def test_market_risk_workflow_is_safe_and_fully_wired() -> None:
         "calculate_position_market_values": "derive_cash_balances",
         "calculate_portfolio_daily_metrics": "calculate_position_market_values",
         "calculate_risk_measures": "calculate_portfolio_daily_metrics",
+        "validate_serving_outputs": "calculate_risk_measures",
     }
     for task_key, upstream_task_key in expected_dependencies.items():
         assert tasks[task_key]["depends_on"] == [
@@ -118,3 +120,17 @@ def test_market_risk_workflow_is_safe_and_fully_wired() -> None:
     assert tasks["calculate_risk_measures"]["notebook_task"][
         "base_parameters"
     ]["as_of_date"] == "{{job.parameters.risk_as_of_date}}"
+
+    validation_parameters = tasks["validate_serving_outputs"][
+    "notebook_task"
+    ]["base_parameters"]
+
+    assert tasks["validate_serving_outputs"]["notebook_task"][
+        "notebook_path"
+    ] == "../notebooks/qa/phase_11_validate_serving_outputs.py"
+
+    assert validation_parameters == {
+        "portfolio_id": "{{job.parameters.portfolio_id}}",
+        "valuation_date": "{{job.parameters.valuation_date}}",
+        "risk_as_of_date": "{{job.parameters.risk_as_of_date}}",
+    }

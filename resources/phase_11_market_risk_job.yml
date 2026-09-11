@@ -119,3 +119,15 @@ resources:
               as_of_date: "{{job.parameters.risk_as_of_date}}"
               code_version: "{{job.parameters.code_version}}"
               trigger_type: "{{job.parameters.trigger_type}}"
+
+        - task_key: validate_serving_outputs
+          depends_on:
+            - task_key: calculate_risk_measures
+          timeout_seconds: 1800
+          max_retries: 0
+          notebook_task:
+            notebook_path: ../notebooks/qa/phase_11_validate_serving_outputs.py
+            base_parameters:
+              portfolio_id: "{{job.parameters.portfolio_id}}"
+              valuation_date: "{{job.parameters.valuation_date}}"
+              risk_as_of_date: "{{job.parameters.risk_as_of_date}}"
