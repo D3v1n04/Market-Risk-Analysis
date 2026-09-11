@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  local-quality:
+    name: Local quality gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --all-groups --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Check environment
+        run: uv run market-risk-check
+
+      - name: Validate tracked bundle configuration
+        run: |
+          uv run python -c "
+          from pathlib import Path
+          import yaml
+
+          bundle = yaml.safe_load(Path('databricks.yml').read_text())
+          assert bundle['bundle']['name'] == 'Market-Risk-Analysis'
+          assert set(bundle['targets']) == {'dev'}
+          assert bundle['targets']['dev']['mode'] == 'development'
+          "
+
+      - name: Check credential and generated-file hygiene
+        run: |
+          python - <<'PY'
+          import subprocess
+
+          tracked_paths = subprocess.check_output(
+              ["git", "ls-files"],
+              text=True,
+          ).splitlines()
+
+          forbidden_paths = [
+              path
+              for path in tracked_paths
+              if (
+                  path == ".env"
+                  or (
+                      path.startswith(".env.")
+                      and path != ".env.example"
+                  )
+                  or path == ".databricks"
+                  or path.startswith(".databricks/")
+                  or "/__pycache__/" in path
+                  or path.endswith((".pyc", ".pyo"))
+                  or "/.pbi/" in path
+              )
+          ]
+
+          if forbidden_paths:
+              raise SystemExit(
+                  "Tracked credential or generated files found:\n"
+                  + "\n".join(forbidden_paths)
+              )
+          PY
