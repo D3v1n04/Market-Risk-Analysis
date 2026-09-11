@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import hashlib
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -351,11 +351,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     manifest = {
         "source_id": SOURCE_ID,
         "client_version": "1.7.0",
-        "request": {"start_date": "2020-01-01", "end_date_exclusive": "2026-01-01", "interval": "1d"},
+        "request": {
+            "start_date": "2020-01-01",
+            "end_date_exclusive": "2026-01-01",
+            "interval": "1d",
+        },
         "retrieved_at_utc": _utc_timestamp(retrieved_at_utc),
         "instrument_count": len(mappings),
-        "daily_prices": {"path": price_path.name, "record_count": len(price_rows), "sha256": price_sha256},
-        "corporate_actions": {"path": action_path.name, "record_count": len(action_rows), "sha256": action_sha256},
+        "daily_prices": {
+            "path": price_path.name,
+            "record_count": len(price_rows),
+            "sha256": price_sha256,
+        },
+        "corporate_actions": {
+            "path": action_path.name,
+            "record_count": len(action_rows),
+            "sha256": action_sha256,
+        },
         "failures": failures,
         "status": "PARTIAL" if failures else "SUCCEEDED",
     }
